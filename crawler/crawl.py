@@ -14,7 +14,7 @@ async def scrape_kapruka_cakes():
         })
 
         # ── Step 1: Load page ──────────────────────────
-        print("🌐 Loading kapruka cakes page...")
+        print("Loading kapruka cakes page...")
         await page.goto(
             "https://www.kapruka.com/online/cakes",
             timeout=60000,
@@ -28,9 +28,9 @@ async def scrape_kapruka_cakes():
         try:
             await page.wait_for_selector("div.catalogueV2Repeater", timeout=20000)
             count = len(await page.query_selector_all("div.catalogueV2Repeater"))
-            print(f"✅ Products found! Initial count: {count}")
+            print(f"Products found! Initial count: {count}")
         except Exception as e:
-            print(f"❌ Could not find products: {e}")
+            print(f"Could not find products: {e}")
             await browser.close()
             return []
 
@@ -51,7 +51,7 @@ async def scrape_kapruka_cakes():
                 # Count before
                 before = len(await page.query_selector_all("div.catalogueV2Repeater"))
 
-                # ✅ Confirmed ID from debug output
+                # Confirmed ID from debug output
                 see_more = await page.query_selector("a#viewMoreButton")
 
                 # Fallback 1: div wrapper
@@ -63,13 +63,13 @@ async def scrape_kapruka_cakes():
                     see_more = await page.query_selector(".common_button")
 
                 if not see_more:
-                    print("✅ 'See More' button gone. All products loaded!")
+                    print("'See More' button gone. All products loaded!")
                     break
 
                 # Check visibility
                 is_visible = await see_more.is_visible()
                 if not is_visible:
-                    print("✅ Button hidden. All products loaded!")
+                    print("Button hidden. All products loaded!")
                     break
 
                 # Click
@@ -80,21 +80,21 @@ async def scrape_kapruka_cakes():
                 after = len(await page.query_selector_all("div.catalogueV2Repeater"))
 
                 click_count += 1
-                print(f"  🔄 Click #{click_count} — total products: {after}")
+                print(f"  Click #{click_count} — total products: {after}")
 
                 # Stop if nothing new loaded
                 if after <= before:
-                    print("✅ No new products added. Done!")
+                    print("No new products added. Done!")
                     break
 
             except Exception as e:
-                print(f"⚠️  Stopped: {e}")
+                print(f" Stopped: {e}")
                 break
 
-        print(f"\n📊 Finished loading. Total clicks: {click_count}")
+        print(f"\n Finished loading. Total clicks: {click_count}")
 
         # ── Step 4: Extract all products ───────────────
-        print("🔍 Extracting product data...")
+        print("Extracting product data...")
         cards = await page.query_selector_all("div.catalogueV2Repeater")
         print(f"Total cards: {len(cards)}")
 
@@ -132,10 +132,10 @@ async def scrape_kapruka_cakes():
                 all_products.append(product)
 
                 if (i + 1) % 50 == 0:
-                    print(f"  ✅ Extracted {i + 1} products...")
+                    print(f" Extracted {i + 1} products...")
 
             except Exception as e:
-                print(f"  ❌ Error on product {i}: {e}")
+                print(f" Error on product {i}: {e}")
                 continue
 
         await browser.close()
@@ -150,7 +150,7 @@ async def main():
     products = await scrape_kapruka_cakes()
 
     if not products:
-        print("❌ No products scraped.")
+        print("No products scraped.")
         return
 
     with open("data/cakes.json", "w", encoding="utf-8") as f:
