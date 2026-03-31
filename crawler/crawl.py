@@ -2,101 +2,125 @@ import asyncio
 import json
 from playwright.async_api import async_playwright
 
-async def scrape_kapruka_cakes():
+
+async def scrape_product_detail(page, url):
+    """Visit individual product page and extract full details"""
+    try:
+        await page.goto(url, timeout=30000, wait_until="domcontentloaded")
+        await asyncio.sleep(2)
+
+        # ── Tab 1: Description ────────────────────────
+        tab1_el     = await page.query_selector("div#Tab1 div.detailDescription")
+        description = (await tab1_el.inner_text()).strip() if tab1_el else "N/A"
+
+        # ── Tab 2: Specs / Ingredients ────────────────
+        tab2_el = await page.query_selector("div#Tab2 div.detailDescription")
+        specs   = (await tab2_el.inner_text()).strip() if tab2_el else "N/A"
+
+        # ── Availability ──────────────────────────────
+
+        tag_els      = await page.query_selector_all("span.tags")
+        availability = ""  
+
+        for tag in tag_els:
+            text = (await tag.inner_text()).strip().lower()
+            if "in stock" in text:
+                availability = "In Stock"
+                break
+            elif "out of stock" in text:
+                availability = "Out of Stock"
+                break
+
+        return {
+            "description" : description,
+            "specs"       : specs,
+            "availability": availability
+        }
+
+    except Exception as e:
+        print(f"  Could not get details: {e}")
+        return {
+            "description" : "N/A",
+            "specs"       : "N/A",
+            "availability": "Unknown"
+        }
+
+
+async def scrape_kapruka_products(category, url):
     all_products = []
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
-        page    = await browser.new_page()
 
+        # ── Listing page ───────────────────────────────
+        page = await browser.new_page()
         await page.set_extra_http_headers({
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36"
         })
 
-        # ── Step 1: Load page ──────────────────────────
-        print("Loading kapruka cakes page...")
-        await page.goto(
-            "https://www.kapruka.com/online/cakes",
-            timeout=60000,
-            wait_until="domcontentloaded"
-        )
+        print(f"\n Loading kapruka {category} page...")
+        await page.goto(url, timeout=60000, wait_until="domcontentloaded")
 
         print("⏳ Waiting for products to render...")
         await asyncio.sleep(5)
 
-        # ── Step 2: Confirm products exist ─────────────
+        # ── Confirm products exist ─────────────────────
         try:
             await page.wait_for_selector("div.catalogueV2Repeater", timeout=20000)
             count = len(await page.query_selector_all("div.catalogueV2Repeater"))
-            print(f"Products found! Initial count: {count}")
+            print(f" Products found! Initial count: {count}")
         except Exception as e:
-            print(f"Could not find products: {e}")
+            print(f" Could not find products: {e}")
             await browser.close()
             return []
 
-        # ── Step 3: Click "See More Products" ──────────
-        # Confirmed selectors from debug:
-        #   <a id="viewMoreButton">See More Products</a>
-        #   <div id="pagination_btn" class="common_button">
-
+        # ── Click "See More" until all loaded ──────────
         click_count = 0
-        max_clicks  = 40  # 975 products / 30 per click = ~33 clicks
+        max_clicks  = 40
 
         while click_count < max_clicks:
             try:
-                # Scroll to bottom
                 await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
                 await asyncio.sleep(2)
 
-                # Count before
                 before = len(await page.query_selector_all("div.catalogueV2Repeater"))
 
-                # Confirmed ID from debug output
-                see_more = await page.query_selector("a#viewMoreButton")
-
-                # Fallback 1: div wrapper
-                if not see_more:
-                    see_more = await page.query_selector("div#pagination_btn")
-
-                # Fallback 2: class name
-                if not see_more:
-                    see_more = await page.query_selector(".common_button")
+                see_more = (
+                    await page.query_selector("a#viewMoreButton") or
+                    await page.query_selector("div#pagination_btn") or
+                    await page.query_selector(".common_button")
+                )
 
                 if not see_more:
-                    print("'See More' button gone. All products loaded!")
+                    print(" No more button. All products loaded!")
                     break
 
-                # Check visibility
                 is_visible = await see_more.is_visible()
                 if not is_visible:
-                    print("Button hidden. All products loaded!")
+                    print(" Button hidden. All products loaded!")
                     break
 
-                # Click
                 await see_more.click()
                 await asyncio.sleep(3)
 
-                # Count after
                 after = len(await page.query_selector_all("div.catalogueV2Repeater"))
-
                 click_count += 1
-                print(f"  Click #{click_count} — total products: {after}")
+                print(f" Click #{click_count} — total products: {after}")
 
-                # Stop if nothing new loaded
                 if after <= before:
-                    print("No new products added. Done!")
+                    print(" No new products. Done!")
                     break
 
             except Exception as e:
                 print(f" Stopped: {e}")
                 break
 
-        print(f"\n Finished loading. Total clicks: {click_count}")
-
-        # ── Step 4: Extract all products ───────────────
-        print("Extracting product data...")
+        # ── Extract card data ──────────────────────────
+        print("\n Collecting product cards...")
         cards = await page.query_selector_all("div.catalogueV2Repeater")
-        print(f"Total cards: {len(cards)}")
+        print(f" Total cards: {len(cards)}")
+
+        card_data_list = []
 
         for i, card in enumerate(cards):
             try:
@@ -109,54 +133,110 @@ async def scrape_kapruka_cakes():
                 link_el  = await card.query_selector("a")
                 link     = await link_el.get_attribute("href") if link_el else ""
 
-                img_el   = await card.query_selector("img")
-                image    = await img_el.get_attribute("src") if img_el else "N/A"
-
-                badge_el = await card.query_selector("div.ribbon-drop span")
-                badge    = (await badge_el.text_content()).strip() if badge_el else ""
-
                 weight_el = await card.query_selector("div.thumb-text span")
                 weight    = (await weight_el.text_content()).strip() if weight_el else ""
 
-                product = {
-                    "name"        : name,
-                    "price"       : price,
-                    "weight"      : weight,
-                    "badge"       : badge,
-                    "category"    : "cakes",
-                    "availability": "In Stock",
-                    "image_url"   : image,
-                    "product_url" : f"https://www.kapruka.com{link}" if link else "N/A"
-                }
 
-                all_products.append(product)
-
-                if (i + 1) % 50 == 0:
-                    print(f" Extracted {i + 1} products...")
+                card_data_list.append({
+                    "name"       : name,
+                    "price"      : price,
+                    "weight"     : weight,
+                    "product_url": link
+                })
 
             except Exception as e:
-                print(f" Error on product {i}: {e}")
+                print(f"Card error on {i}: {e}")
                 continue
 
+        await page.close()
+
+        # ── Visit each product detail page ─────────────
+
+        detail_page = await browser.new_page()
+        await detail_page.set_extra_http_headers({
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36"
+        })
+
+        print(f"\n🔎 Visiting each product page for details...")
+
+        for i, card in enumerate(card_data_list):
+            if not card["product_url"]:
+                all_products.append({
+                    **card,
+                    "category"   : category,
+                    "availability": "Unknown",
+                    "description" : "N/A",
+                    "specs"       : "N/A"
+                })
+                continue
+
+            # Get detailed info from product page
+            detail = await scrape_product_detail(detail_page, card["product_url"])
+
+            product = {
+                "name"        : card["name"],
+                "price"       : card["price"],
+                "weight"      : card["weight"],
+                "product_url" : card["product_url"],
+                "category"    : category,
+                "availability": detail["availability"],
+                "description" : detail["description"],
+                "specs"       : detail["specs"]
+            }
+
+            all_products.append(product)
+
+            if (i + 1) % 10 == 0:
+                print(f"Done {i + 1}/{len(card_data_list)} products...")
+
+            await asyncio.sleep(1)  
+
+        await detail_page.close()
         await browser.close()
 
     return all_products
 
 
 async def main():
-    print("🕷️  Kapruka Cake Scraper")
+    print("Kapruka Product Scraper")
     print("=" * 40)
 
-    products = await scrape_kapruka_cakes()
+    categories = {
+        "cakes"  : "https://www.kapruka.com/online/cakes",
+        "flowers": "https://www.kapruka.com/online/flowers",
+        "books" : "https://www.kapruka.com/online/books",
+        "fashion" : "https://www.kapruka.com/online/fashion",
+        "gifts" : "https://www.kapruka.com/online/customizedGifts",
+        "vouchers" : "https://www.kapruka.com/online/giftvouchers",
+        "electronics" : "https://www.kapruka.com/online/electronics"
+    }
 
-    if not products:
-        print("No products scraped.")
-        return
+    all_combined = []
 
-    with open("data/cakes.json", "w", encoding="utf-8") as f:
-        json.dump(products, f, indent=2, ensure_ascii=False)
-    print(f"💾 Saved to data/cakes.json") #950 products
+    for cat, url in categories.items():
+        print(f"\n{'='*40}")
+        print(f" Category: {cat.upper()}")
+        print(f"{'='*40}")
 
+        products = await scrape_kapruka_products(cat, url)
+
+        if not products:
+            print(f"No products for {cat}. Skipping...")
+            continue  
+
+        filename = f"data/{cat}.json"
+        with open(filename, "w", encoding="utf-8") as f:
+            json.dump(products, f, indent=2, ensure_ascii=False)
+
+        print(f"Saved {len(products)} products to {filename}")
+        all_combined.extend(products)
+
+    # Save combined catalog for the agent
+    with open("data/catalog.json", "w", encoding="utf-8") as f:
+        json.dump(all_combined, f, indent=2, ensure_ascii=False)
+
+    print(f"\n Done! Total: {len(all_combined)} products")
+    print(f" Combined saved to data/catalog2.json")
 
 
 asyncio.run(main())
