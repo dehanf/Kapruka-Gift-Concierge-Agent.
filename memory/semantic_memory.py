@@ -8,7 +8,6 @@ class SemanticMemory:
         self.filepath = filepath
         self.profiles = {}
         self.load()
-
     
     def load(self):
         os.makedirs(os.path.dirname(self.filepath), exist_ok=True)
@@ -25,7 +24,6 @@ class SemanticMemory:
         with open(self.filepath, "w") as f:
             json.dump(self.profiles, f, indent=2)
         print(f"Profiles saved to {self.filepath}")
-
 
     def add_or_update_profile(self, customer_id: str, name: str, allergies: list = [], preferences: list = [], location: str = ""):
         
