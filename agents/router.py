@@ -1,6 +1,7 @@
 # agents/router.py
 
 import json
+import anthropic
 from memory.st_memory import ShortTermMemory
 from memory.semantic_memory import add_or_update_profile
 
