@@ -1,10 +1,13 @@
 import json
 import os
+from pathlib import Path
+
+_DEFAULT_PATH = str(Path(__file__).resolve().parents[1] / "data" / "recipient_profiles.json")
 
 
 class SemanticMemory:
 
-    def __init__(self,filepath: str = "../data/recipient_profiles.json"):
+    def __init__(self, filepath: str = _DEFAULT_PATH):
         self.filepath = filepath
         self.profiles = {}
         self.load()
@@ -64,3 +67,22 @@ class SemanticMemory:
         else:
             print(f"No customer found for: {customer_id}")
             return {}
+
+
+# Module-level singleton used by router.py
+_memory = SemanticMemory()
+
+def add_or_update_profile(customer_id: str, name: str, allergies: list = None, preferences: list = None, location: str = "") -> str:
+    if not name:
+        return "No recipient name provided — profile not updated."
+    _memory.add_or_update_profile(
+        customer_id=customer_id,
+        name=name,
+        allergies=allergies or [],
+        preferences=[preferences] if isinstance(preferences, str) and preferences else (preferences or []),
+        location=location or ""
+    )
+    return f"Got it — I've saved {name}'s preferences."
+
+def get_profile(customer_id: str, name: str) -> dict:
+    return _memory.get_profile(customer_id, name) or {}
