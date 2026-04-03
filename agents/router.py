@@ -4,6 +4,7 @@ import json
 import anthropic
 from memory.st_memory import ShortTermMemory
 from memory.semantic_memory import add_or_update_profile
+from agents import catalog_agent
 
 
 client = anthropic.Anthropic()
@@ -97,8 +98,12 @@ class Router:
                 responses.append(result)
 
             elif intent == "SEARCH":
-                # catalog agent goes here
-                pass
+                result = catalog_agent.run(
+                    customer_id=self.customer_id,
+                    recipient=classification.get("recipient"),
+                    search_query=classification.get("search_query") or user_message
+                )
+                responses.append(result)
 
             elif intent == "LOGISTICS":
                 # logistics agent goes here
