@@ -43,7 +43,7 @@ def search_catalog(query : str,top_k : int = 5):
     ).points
 
     products = [hit.payload for hit in results]
-    return 
+    return products
 
 
 def main():
