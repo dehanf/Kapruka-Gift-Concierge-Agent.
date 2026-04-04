@@ -2,7 +2,7 @@ import os
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams
 from dotenv import load_dotenv
-from config import QDRANT_COLLECTION_NAME, QDRANT_EMBEDDING_DIM, QDRANT_TIMEOUT
+from utils.config import QDRANT_COLLECTION_NAME, QDRANT_EMBEDDING_DIM, QDRANT_TIMEOUT
 
 load_dotenv()
 

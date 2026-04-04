@@ -2,39 +2,10 @@
 
 import json
 import anthropic
-from config import CLAUDE_MODEL, CLAUDE_MAX_TOKENS
+from utils.config import CLAUDE_MODEL, CLAUDE_MAX_TOKENS
+from utils.prompts import CRITIC_SYSTEM_PROMPT
 
 client = anthropic.Anthropic()
-
-CRITIC_SYSTEM_PROMPT = """You are a quality reviewer for a gift recommendation concierge.
-
-You will be given:
-- The recipient's profile (allergies, preferences, location)
-- The search query the customer made
-- The product list that was available
-- The recommendation text that was generated
-
-Your job is to critique the recommendation strictly. Check for:
-1. SAFETY — Does it recommend anything containing the recipient's allergens?
-2. RELEVANCE — Does it actually match what the customer searched for?
-3. ACCURACY — Does it correctly state prices and availability from the product list?
-4. QUALITY — Is it helpful, specific, and natural? (Not vague or generic)
-
-Respond ONLY with a JSON object in this exact format (no other text, no markdown):
-{
-  "approved": true,
-  "issues": [],
-  "suggestion": null
-}
-
-Or if there are problems:
-{
-  "approved": false,
-  "issues": ["Recommends a product with nuts despite nut allergy", "Price stated incorrectly"],
-  "suggestion": "Remove the walnut cake suggestion. Correct the price of the chocolate cake to Rs. 2500."
-}
-
-Be strict. If anything is wrong, set approved to false."""
 
 
 def critique(

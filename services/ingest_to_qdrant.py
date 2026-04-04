@@ -11,7 +11,7 @@ load_dotenv()
 # Add project root to path so we can import qdrant_store
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 from infrastructure.db.qdrant_store import ensure_collection, collection_info, get_client, COLLECTION_NAME
-from config import CATALOG_PATH, INGEST_EMBEDDING_MODEL, INGEST_BATCH_SIZE
+from utils.config import CATALOG_PATH, INGEST_EMBEDDING_MODEL, INGEST_BATCH_SIZE
 
 EMBEDDING_MODEL = INGEST_EMBEDDING_MODEL
 BATCH_SIZE = INGEST_BATCH_SIZE

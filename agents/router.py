@@ -5,36 +5,12 @@ import anthropic
 from memory.st_memory import ShortTermMemory
 from memory.semantic_memory import add_or_update_profile
 from agents import catalog_agent
-from config import CLAUDE_MODEL, CLAUDE_MAX_TOKENS
+from utils.config import CLAUDE_MODEL, CLAUDE_MAX_TOKENS
+from utils.prompts import ROUTER_SYSTEM_PROMPT
 
 
 client = anthropic.Anthropic()
 
-ROUTER_SYSTEM_PROMPT = """You are an intent classifier for a Kapruka gift concierge system in Sri Lanka.
-
-Analyze the user's message and extract ALL intents present. There can be 1, 2, or 3 intents in a single message.
-
-INTENTS:
-- PREFERENCE_UPDATE: User wants to save/update a recipient's preferences, allergies, or personal info
-- SEARCH: User wants to find/search for a gift or product from the catalog
-- LOGISTICS: User asks about delivery, location, district, timing, or availability
-
-Respond ONLY with a JSON object in this exact format (no other text, no markdown):
-{
-  "intents": ["PREFERENCE_UPDATE", "SEARCH", "LOGISTICS"],
-  "recipient": "wife",
-  "allergies": ["nuts", "dairy"],
-  "location": "Kandy",
-  "search_query": "nut-free birthday cake",
-  "preference_note": "wife is allergic to nuts"
-}
-
-Rules:
-- "intents" must always be a list, even if only one intent
-- Always put PREFERENCE_UPDATE first if present (must save before searching)
-- Always put LOGISTICS last if present
-- Set fields to null if not mentioned
-- "search_query" should be a clean product search string"""
 
 class Router:
     def __init__(self,customer_id : str):

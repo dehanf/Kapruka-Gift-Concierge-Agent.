@@ -4,29 +4,10 @@ import anthropic
 from memory.lt_memory import search_catalog
 from memory.semantic_memory import get_profile
 from agents import critic_agent
-from config import CLAUDE_MODEL, CLAUDE_MAX_TOKENS, MAX_REFLECTION_ROUNDS, CATALOG_SEARCH_TOP_K, CATALOG_MAX_PRODUCTS
+from utils.config import CLAUDE_MODEL, CLAUDE_MAX_TOKENS, MAX_REFLECTION_ROUNDS, CATALOG_SEARCH_TOP_K, CATALOG_MAX_PRODUCTS
+from utils.prompts import CATALOG_SYSTEM_PROMPT, REVISE_SYSTEM_PROMPT
 
 client = anthropic.Anthropic()
-
-CATALOG_SYSTEM_PROMPT = """You are a warm and helpful gift concierge for Kapruka, a Sri Lankan gifting platform.
-
-You will be given:
-- Who the gift is for and any known preferences or allergies
-- A list of matching products from the catalog
-
-Write a short, friendly recommendation (3-5 sentences) that:
-- Suggests the top 1-3 products by name and price
-- Mentions why each suits the recipient (occasion, preferences)
-- Warns if stock is limited or a product is unavailable
-- Stays concise — no bullet walls, just natural conversation
-
-Respond in plain text only. No markdown."""
-
-REVISE_SYSTEM_PROMPT = """You are a gift concierge revising a recommendation based on a critic's feedback.
-
-You will be given the original recommendation and specific issues found.
-Fix only what the critic flagged. Keep everything else the same.
-Respond in plain text only. No markdown."""
 
 
 def _generate(user_content: str) -> str:
@@ -64,7 +45,7 @@ def run(customer_id: str, recipient: str, search_query: str) -> str:
     products = search_catalog(search_query, top_k=CATALOG_SEARCH_TOP_K)
 
     if not products:
-        return "I searched our catalog but couldn't find anything matching that right now. Could you try describing the gift differently?"
+        return "Sorry ! Unfortunately i couldn't find anything matching right now. Could you try describing the gift differently?"
 
     # 3. Filter out products that contain allergens
     if allergies:
