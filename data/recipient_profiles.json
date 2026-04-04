@@ -1,1 +1,22 @@
-{}
+{
+  "well for this easter sunday i am planning to order a cake my my wife and i are allergic to nuts what options do we have here?": {
+    "wife": {
+      "allergies": [
+        "nuts"
+      ],
+      "preferences": [
+        "wife and user are allergic to nuts"
+      ],
+      "location": ""
+    },
+    "well for this easter sunday i am planning to order a cake my my wife and i are allergic to nuts what options do we have here?": {
+      "allergies": [
+        "cashews"
+      ],
+      "preferences": [
+        "dislikes cashews"
+      ],
+      "location": ""
+    }
+  }
+}
