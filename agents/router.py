@@ -4,7 +4,7 @@ import json
 import anthropic
 from memory.st_memory import ShortTermMemory
 from memory.semantic_memory import add_or_update_profile
-from agents import catalog_agent
+from agents import catalog_agent, logistics_agent
 from utils.config import CLAUDE_MODEL, CLAUDE_MAX_TOKENS
 from utils.prompts import ROUTER_SYSTEM_PROMPT
 
@@ -83,8 +83,12 @@ class Router:
                 responses.append(result)
 
             elif intent == "LOGISTICS":
-                # logistics agent goes here
-                pass
+                result = logistics_agent.run(
+                    location=classification.get("location"),
+                    deadline=classification.get("deadline"),
+                    tracking_code=classification.get("tracking_code")
+                )
+                responses.append(result)
 
         final_response = "\n\n".join(responses)
 
