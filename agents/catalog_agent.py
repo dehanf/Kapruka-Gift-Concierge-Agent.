@@ -34,7 +34,9 @@ def _revise(recommendation: str, issues: list, suggestion: str) -> str:
 def run(customer_id: str, recipient: str, search_query: str) -> str:
 
     # 1. Get recipient profile for allergy/preference filtering
-    profile = get_profile(customer_id, recipient) if recipient else {}
+    # "self" means the customer is buying for themselves — look up by customer_id
+    resolved_recipient = customer_id if recipient and recipient.lower() == "self" else recipient
+    profile = get_profile(customer_id, resolved_recipient) if resolved_recipient else {}
     allergies = [a.lower() for a in profile.get("allergies", [])]
 
     # 2. Search the catalog

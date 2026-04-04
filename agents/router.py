@@ -24,12 +24,20 @@ class Router:
         raw = chat(
             system=ROUTER_SYSTEM_PROMPT,
             messages=messages,
-            max_tokens=CLAUDE_MAX_TOKENS,
+            max_tokens=512,   # classification JSON needs more room than general responses
             model=CLAUDE_MODEL,
         )
 
+        # Strip markdown fences if model wraps response in ```json ... ```
+        clean = raw.strip()
+        if clean.startswith("```"):
+            clean = clean.split("```")[1]
+            if clean.startswith("json"):
+                clean = clean[4:]
+            clean = clean.strip()
+
         try:
-            result = json.loads(raw)
+            result = json.loads(clean)
             if isinstance(result.get("intents"), str):
                 result["intents"] = [result["intents"]]
             return result
