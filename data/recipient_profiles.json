@@ -1,20 +1,28 @@
 {
-  "well for this easter sunday i am planning to order a cake my my wife and i are allergic to nuts what options do we have here?": {
-    "wife": {
+  "001": {
+    "self and wife": {
       "allergies": [
-        "nuts"
+        "almonds"
       ],
       "preferences": [
-        "wife and user are allergic to nuts"
+        "wife and self are allergic to almonds, love chocolate"
       ],
       "location": ""
     },
-    "well for this easter sunday i am planning to order a cake my my wife and i are allergic to nuts what options do we have here?": {
-      "allergies": [
-        "cashews"
-      ],
+    "son": {
+      "allergies": [],
       "preferences": [
-        "dislikes cashews"
+        "loves tech, more into computers",
+        "son loves tech"
+      ],
+      "location": ""
+    }
+  },
+  "002": {
+    "mother": {
+      "allergies": [],
+      "preferences": [
+        "mother likes books"
       ],
       "location": ""
     }

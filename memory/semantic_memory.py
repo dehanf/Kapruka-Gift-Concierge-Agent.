@@ -75,16 +75,14 @@ _memory = SemanticMemory()
 def add_or_update_profile(customer_id: str, name: str, allergies: list = None, preferences: list = None, location: str = "") -> str:
     if not name:
         return "No recipient name provided — profile not updated."
-    # "self" means the customer is buying for themselves — store under their own name
-    resolved_name = customer_id if name.lower() == "self" else name
     _memory.add_or_update_profile(
         customer_id=customer_id,
-        name=resolved_name,
+        name=name,
         allergies=allergies or [],
         preferences=[preferences] if isinstance(preferences, str) and preferences else (preferences or []),
         location=location or ""
     )
-    display = "your" if name.lower() == "self" else f"{resolved_name}'s"
+    display = "your" if name.lower() == "self" else f"{name}'s"
     return f"Got it — I've saved {display} preferences."
 
 def get_profile(customer_id: str, name: str) -> dict:

@@ -4,6 +4,8 @@ Entry point for the CLI conversation loop.
 """
 
 from agents.router import Router
+import time
+
 
 
 def main():
@@ -36,8 +38,11 @@ def main():
             print("\nAssistant: Thank you for using Kapruka Gift Concierge. Goodbye!")
             break
 
+        start = time.time()
         response = router.route(user_input)
+        elapsed = time.time() - start
         print(f"\nAssistant: {response}")
+        print(f"[Response time: {elapsed:.2f}s]")
         print("-" * 50)
 
 

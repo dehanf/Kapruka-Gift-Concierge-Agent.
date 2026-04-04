@@ -21,7 +21,7 @@ EXAMPLES:
 
 User: "I don't like nuts and I'm allergic to chocolate, what cakes can I buy?"
 Output:
-{"intents":["PREFERENCE_UPDATE","SEARCH"],"recipient":"self","allergies":["nuts","chocolate"],"location":null,"deadline":null,"search_query":"cakes","preference_note":"dislikes nuts, allergic to chocolate","tracking_code":null}
+{"intents":["PREFERENCE_UPDATE","SEARCH"],"recipient":"user","allergies":["nuts","chocolate"],"location":null,"deadline":null,"search_query":"cakes","preference_note":"dislikes nuts, allergic to chocolate","tracking_code":null}
 
 User: "Find a birthday gift for my wife, she loves vanilla"
 Output:
