@@ -1,23 +1,20 @@
 # agents/catalog_agent.py
 
-import anthropic
 from memory.lt_memory import search_catalog
 from memory.semantic_memory import get_profile
 from agents import critic_agent
 from utils.config import CLAUDE_MODEL, CLAUDE_MAX_TOKENS, MAX_REFLECTION_ROUNDS, CATALOG_SEARCH_TOP_K, CATALOG_MAX_PRODUCTS
 from utils.prompts import CATALOG_SYSTEM_PROMPT, REVISE_SYSTEM_PROMPT
-
-client = anthropic.Anthropic()
+from infrastructure.llm.client import chat
 
 
 def _generate(user_content: str) -> str:
-    response = client.messages.create(
-        model=CLAUDE_MODEL,
-        max_tokens=CLAUDE_MAX_TOKENS,
+    return chat(
         system=CATALOG_SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": user_content}]
+        messages=[{"role": "user", "content": user_content}],
+        max_tokens=CLAUDE_MAX_TOKENS,
+        model=CLAUDE_MODEL,
     )
-    return response.content[0].text.strip()
 
 
 def _revise(recommendation: str, issues: list, suggestion: str) -> str:
@@ -26,13 +23,12 @@ def _revise(recommendation: str, issues: list, suggestion: str) -> str:
         f"Issues found:\n" + "\n".join(f"- {i}" for i in issues) +
         f"\n\nSuggested fix:\n{suggestion or 'Address the issues above.'}"
     )
-    response = client.messages.create(
-        model=CLAUDE_MODEL,
-        max_tokens=CLAUDE_MAX_TOKENS,
+    return chat(
         system=REVISE_SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": content}]
+        messages=[{"role": "user", "content": content}],
+        max_tokens=CLAUDE_MAX_TOKENS,
+        model=CLAUDE_MODEL,
     )
-    return response.content[0].text.strip()
 
 
 def run(customer_id: str, recipient: str, search_query: str) -> str:

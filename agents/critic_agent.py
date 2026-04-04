@@ -1,11 +1,9 @@
 # agents/critic_agent.py
 
 import json
-import anthropic
 from utils.config import CLAUDE_MODEL, CLAUDE_MAX_TOKENS
 from utils.prompts import CRITIC_SYSTEM_PROMPT
-
-client = anthropic.Anthropic()
+from infrastructure.llm.client import chat
 
 
 def critique(
@@ -39,14 +37,12 @@ Available products:
 Recommendation to review:
 {recommendation}"""
 
-    response = client.messages.create(
-        model=CLAUDE_MODEL,
-        max_tokens=CLAUDE_MAX_TOKENS,
+    raw = chat(
         system=CRITIC_SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": context}]
+        messages=[{"role": "user", "content": context}],
+        max_tokens=CLAUDE_MAX_TOKENS,
+        model=CLAUDE_MODEL,
     )
-
-    raw = response.content[0].text.strip()
 
     try:
         return json.loads(raw)

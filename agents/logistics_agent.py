@@ -1,10 +1,8 @@
 # agents/logistics_agent.py
 
-import anthropic
 from utils.config import CLAUDE_MODEL, CLAUDE_MAX_TOKENS
 from utils.prompts import LOGISTICS_SYSTEM_PROMPT
-
-client = anthropic.Anthropic()
+from infrastructure.llm.client import chat
 
 # Kapruka delivery coverage for Sri Lankan districts
 # tier 1 = next-day, tier 2 = 2-3 days, tier 3 = 3-5 days
@@ -93,11 +91,9 @@ def run(location: str | None, deadline: str | None = None, tracking_code: str | 
             f"Deadline: {deadline or 'not specified'}"
         )
 
-    response = client.messages.create(
-        model=CLAUDE_MODEL,
-        max_tokens=CLAUDE_MAX_TOKENS,
+    return chat(
         system=LOGISTICS_SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": context}]
+        messages=[{"role": "user", "content": context}],
+        max_tokens=CLAUDE_MAX_TOKENS,
+        model=CLAUDE_MODEL,
     )
-
-    return response.content[0].text.strip()

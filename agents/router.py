@@ -1,15 +1,12 @@
 # agents/router.py
 
 import json
-import anthropic
 from memory.st_memory import ShortTermMemory
 from memory.semantic_memory import add_or_update_profile
 from agents import catalog_agent, logistics_agent
 from utils.config import CLAUDE_MODEL, CLAUDE_MAX_TOKENS
 from utils.prompts import ROUTER_SYSTEM_PROMPT
-
-
-client = anthropic.Anthropic()
+from infrastructure.llm.client import chat
 
 
 class Router:
@@ -24,14 +21,12 @@ class Router:
         history = self.st_memory.get_history()
         messages = history + [{"role": "user", "content": user_message}]
 
-        response = client.messages.create(
-            model=CLAUDE_MODEL,
-            max_tokens=CLAUDE_MAX_TOKENS,
+        raw = chat(
             system=ROUTER_SYSTEM_PROMPT,
-            messages=messages
+            messages=messages,
+            max_tokens=CLAUDE_MAX_TOKENS,
+            model=CLAUDE_MODEL,
         )
-
-        raw = response.content[0].text.strip()
 
         try:
             result = json.loads(raw)
@@ -55,9 +50,9 @@ class Router:
         classification = self.classify_intents(user_message)
         intents = classification.get("intents", ["SEARCH"]) # if no intents ,then search default
 
-        print(f"\n👤 Customer        : {self.customer_id}")
-        print(f"🔀 Router Decision : {intents}")
-        print(f"📋 Extracted       : {json.dumps(classification, indent=2)}")
+        print(f"Customer        : {self.customer_id}")
+        print(f"Router Decision : {intents}")
+        print(f"Extracted       : {json.dumps(classification, indent=2)}")
 
         responses = []
 
