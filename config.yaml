@@ -1,0 +1,25 @@
+claude:
+  model: "claude-opus-4-5"
+  max_tokens: 300
+
+catalog_agent:
+  max_reflection_rounds: 2
+  search_top_k: 8
+  max_products_after_filter: 5
+
+short_term_memory:
+  max_turns: 10
+
+lt_memory:
+  embedding_model: "sentence-transformers/all-MiniLM-L6-v2"
+  search_top_k: 5
+
+qdrant:
+  collection_name: "kapruka_catalog"
+  embedding_dim: 384
+  timeout: 30
+
+ingest:
+  catalog_path: "data/catalog.json"
+  embedding_model: "all-MiniLM-L6-v2"
+  batch_size: 100

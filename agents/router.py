@@ -5,6 +5,7 @@ import anthropic
 from memory.st_memory import ShortTermMemory
 from memory.semantic_memory import add_or_update_profile
 from agents import catalog_agent
+from config import CLAUDE_MODEL, CLAUDE_MAX_TOKENS
 
 
 client = anthropic.Anthropic()
@@ -48,8 +49,8 @@ class Router:
         messages = history + [{"role": "user", "content": user_message}]
 
         response = client.messages.create(
-            model="claude-opus-4-5",
-            max_tokens=300,
+            model=CLAUDE_MODEL,
+            max_tokens=CLAUDE_MAX_TOKENS,
             system=ROUTER_SYSTEM_PROMPT,
             messages=messages
         )

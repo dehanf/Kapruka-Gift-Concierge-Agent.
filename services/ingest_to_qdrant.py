@@ -11,12 +11,13 @@ load_dotenv()
 # Add project root to path so we can import qdrant_store
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 from infrastructure.db.qdrant_store import ensure_collection, collection_info, get_client, COLLECTION_NAME
+from config import CATALOG_PATH, INGEST_EMBEDDING_MODEL, INGEST_BATCH_SIZE
 
-CATALOG_PATH = "data/catalog.json"
-EMBEDDING_MODEL = "all-MiniLM-L6-v2"
-BATCH_SIZE = 100
+EMBEDDING_MODEL = INGEST_EMBEDDING_MODEL
+BATCH_SIZE = INGEST_BATCH_SIZE
 
-def load_catalog(path: str = CATALOG_PATH) -> list:
+def load_catalog(path: str = None) -> list:
+    path = path or CATALOG_PATH
     with open(path, "r") as f:
         products = json.load(f)
     print(f"Loaded {len(products)} products from {path}")

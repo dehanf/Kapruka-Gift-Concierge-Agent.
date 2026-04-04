@@ -2,6 +2,7 @@
 
 import json
 import anthropic
+from config import CLAUDE_MODEL, CLAUDE_MAX_TOKENS
 
 client = anthropic.Anthropic()
 
@@ -68,8 +69,8 @@ Recommendation to review:
 {recommendation}"""
 
     response = client.messages.create(
-        model="claude-opus-4-5",
-        max_tokens=300,
+        model=CLAUDE_MODEL,
+        max_tokens=CLAUDE_MAX_TOKENS,
         system=CRITIC_SYSTEM_PROMPT,
         messages=[{"role": "user", "content": context}]
     )

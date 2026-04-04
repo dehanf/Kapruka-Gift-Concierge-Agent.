@@ -18,8 +18,7 @@ import numpy as np
 from sentence_transformers import SentenceTransformer
 from infrastructure.db.qdrant_store import get_client, COLLECTION_NAME
 from qdrant_client.models import Distance, VectorParams
-
-EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+from config import LT_EMBEDDING_MODEL, LT_SEARCH_TOP_K
 
 def cosine_similarity(vec1 : list , vec2 : list):
     a = np.array(vec1)
@@ -29,9 +28,9 @@ def cosine_similarity(vec1 : list , vec2 : list):
 
 
 
-def search_catalog(query : str,top_k : int = 5):
+def search_catalog(query : str, top_k : int = LT_SEARCH_TOP_K):
 
-    encoder = SentenceTransformer(EMBEDDING_MODEL)
+    encoder = SentenceTransformer(LT_EMBEDDING_MODEL)
     query_vector = encoder.encode(query).tolist()
 
     client = get_client()

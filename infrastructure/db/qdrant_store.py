@@ -2,11 +2,12 @@ import os
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams
 from dotenv import load_dotenv
+from config import QDRANT_COLLECTION_NAME, QDRANT_EMBEDDING_DIM, QDRANT_TIMEOUT
 
 load_dotenv()
 
-COLLECTION_NAME = "kapruka_catalog"
-EMBEDDING_DIM = 384        # all-MiniLM-L6-v2 output size
+COLLECTION_NAME = QDRANT_COLLECTION_NAME
+EMBEDDING_DIM = QDRANT_EMBEDDING_DIM
 
 _client = None
 
@@ -23,7 +24,7 @@ def get_client() -> QdrantClient:
     if not api_key:
         raise RuntimeError("QDRANT_API_KEY is not set in .env")
 
-    _client = QdrantClient(url=url, api_key=api_key, timeout=30)
+    _client = QdrantClient(url=url, api_key=api_key, timeout=QDRANT_TIMEOUT)
     print(f"Connected to Qdrant Cloud at {url}")
     return _client
 

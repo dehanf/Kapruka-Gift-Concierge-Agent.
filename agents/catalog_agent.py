@@ -4,10 +4,9 @@ import anthropic
 from memory.lt_memory import search_catalog
 from memory.semantic_memory import get_profile
 from agents import critic_agent
+from config import CLAUDE_MODEL, CLAUDE_MAX_TOKENS, MAX_REFLECTION_ROUNDS, CATALOG_SEARCH_TOP_K, CATALOG_MAX_PRODUCTS
 
 client = anthropic.Anthropic()
-
-MAX_REFLECTION_ROUNDS = 2
 
 CATALOG_SYSTEM_PROMPT = """You are a warm and helpful gift concierge for Kapruka, a Sri Lankan gifting platform.
 
@@ -32,8 +31,8 @@ Respond in plain text only. No markdown."""
 
 def _generate(user_content: str) -> str:
     response = client.messages.create(
-        model="claude-opus-4-5",
-        max_tokens=300,
+        model=CLAUDE_MODEL,
+        max_tokens=CLAUDE_MAX_TOKENS,
         system=CATALOG_SYSTEM_PROMPT,
         messages=[{"role": "user", "content": user_content}]
     )
@@ -47,8 +46,8 @@ def _revise(recommendation: str, issues: list, suggestion: str) -> str:
         f"\n\nSuggested fix:\n{suggestion or 'Address the issues above.'}"
     )
     response = client.messages.create(
-        model="claude-opus-4-5",
-        max_tokens=300,
+        model=CLAUDE_MODEL,
+        max_tokens=CLAUDE_MAX_TOKENS,
         system=REVISE_SYSTEM_PROMPT,
         messages=[{"role": "user", "content": content}]
     )
@@ -62,7 +61,7 @@ def run(customer_id: str, recipient: str, search_query: str) -> str:
     allergies = [a.lower() for a in profile.get("allergies", [])]
 
     # 2. Search the catalog
-    products = search_catalog(search_query, top_k=8)
+    products = search_catalog(search_query, top_k=CATALOG_SEARCH_TOP_K)
 
     if not products:
         return "I searched our catalog but couldn't find anything matching that right now. Could you try describing the gift differently?"
@@ -87,8 +86,8 @@ def run(customer_id: str, recipient: str, search_query: str) -> str:
             )
         products = safe_products
 
-    # 4. Keep top 5 after filtering
-    products = products[:5]
+    # 4. Keep top N after filtering
+    products = products[:CATALOG_MAX_PRODUCTS]
 
     # 5. Build context string for Claude
     profile_summary = ""

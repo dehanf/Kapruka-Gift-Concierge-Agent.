@@ -11,9 +11,10 @@ clear history method to delete history
 """
 
 from datetime import datetime
+from config import ST_MEMORY_MAX_TURNS
 
 class ShortTermMemory:
-    def __init__ (self,max_turns : int = 10):
+    def __init__ (self, max_turns : int = ST_MEMORY_MAX_TURNS):
 
         self.max_turns = max_turns
         self.history : list[dict] = []
