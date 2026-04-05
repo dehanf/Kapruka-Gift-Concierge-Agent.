@@ -54,3 +54,22 @@ def chat(system: str, messages: list[dict], max_tokens: int, model: str) -> str:
     )
 
     return response.choices[0].message.content.strip()
+
+def chat_stream(system: str, messages: list[dict], max_tokens: int, model: str):
+    """
+    Same as chat() but yields text chunks as they arrive.
+    Use for final user-facing responses only.
+    """
+    client = _get_client()
+    full_messages = [{"role": "system", "content": system}] + messages
+
+    with client.chat.completions.create(
+        model=model,
+        max_tokens=max_tokens,
+        messages=full_messages,
+        stream=True,
+    ) as stream:
+        for chunk in stream:
+            delta = chunk.choices[0].delta.content
+            if delta:
+                yield delta

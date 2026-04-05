@@ -21,6 +21,47 @@
         "laptop accessories"
       ],
       "location": ""
+    },
+    "daughter": {
+      "allergies": [
+        "almonds",
+        "cashews"
+      ],
+      "preferences": [],
+      "location": ""
+    }
+  },
+  "002": {
+    "daughter": {
+      "allergies": [
+        "pistachios"
+      ],
+      "preferences": [],
+      "location": ""
+    },
+    "wife": {
+      "allergies": [
+        "cashews",
+        "almonds"
+      ],
+      "preferences": [],
+      "location": ""
+    }
+  },
+  "003": {
+    "daughter": {
+      "allergies": [
+        "almonds"
+      ],
+      "preferences": [],
+      "location": ""
+    },
+    "wife": {
+      "allergies": [
+        "cashews"
+      ],
+      "preferences": [],
+      "location": ""
     }
   }
 }

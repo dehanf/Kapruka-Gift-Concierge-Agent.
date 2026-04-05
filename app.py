@@ -9,13 +9,16 @@ import streamlit as st
 from agents.router import Router
 from memory.semantic_memory import SemanticMemory
 
-
 # ── Warmup ────────────────────────────────────────────────────────────────────
-from infrastructure.db.qdrant_store import get_client
-from memory.lt_memory import _encoder
+@st.cache_resource
+def _warmup():
+    from infrastructure.db.qdrant_store import get_client
+    from memory.lt_memory import encoder
+    get_client()
+    encoder.encode("warmup", show_progress_bar=False)
 
-get_client()
-_encoder.encode("warmup", show_progress_bar=False)
+_warmup()
+# ─────────────────────────────────────────────────────────────────────────────
 
 # ── Page config ───────────────────────────────────────────────────────────────
 
@@ -29,26 +32,17 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-    /* Main background */
     .stApp { background-color: #0f1117; }
-
-    /* Sidebar */
     [data-testid="stSidebar"] { background-color: #161b27; border-right: 1px solid #2a2f3e; }
-
-    /* Chat input */
     [data-testid="stChatInput"] textarea {
         background-color: #1e2433;
         color: #e8eaf6;
         border: 1px solid #3a4060;
         border-radius: 12px;
     }
-
-    /* User message bubble */
     [data-testid="stChatMessageContent"]:has(> div[data-testid="stMarkdownContainer"]) {
         border-radius: 16px;
     }
-
-    /* Cards */
     .info-card {
         background: #1e2433;
         border: 1px solid #2a3050;
@@ -59,8 +53,6 @@ st.markdown("""
         color: #c8cfe8;
     }
     .info-card strong { color: #7986cb; }
-
-    /* Intent badge */
     .badge {
         display: inline-block;
         padding: 3px 10px;
@@ -72,15 +64,11 @@ st.markdown("""
     .badge-search     { background: #1a3a5c; color: #64b5f6; }
     .badge-pref       { background: #1a3d2b; color: #66bb6a; }
     .badge-logistics  { background: #3d2b1a; color: #ffa726; }
-
-    /* Metric style */
     .latency-chip {
         font-size: 0.72rem;
         color: #546e7a;
         margin-top: 4px;
     }
-
-    /* Header */
     .concierge-header {
         text-align: center;
         padding: 8px 0 4px 0;
@@ -112,7 +100,6 @@ with st.sidebar:
     st.markdown("## 🎁 Gift Concierge")
     st.markdown("---")
 
-    # Customer login
     st.markdown("### Customer ID")
     cid_input = st.text_input(
         "Enter your ID",
@@ -138,7 +125,6 @@ with st.sidebar:
 
     st.markdown("---")
 
-    # Recipient profiles panel
     if st.session_state.customer_id:
         st.markdown("### Saved Profiles")
         sm = SemanticMemory()
@@ -159,12 +145,10 @@ with st.sidebar:
 
     st.markdown("---")
 
-    # Debug log
     if st.session_state.debug_log:
         st.markdown("### Last Classification")
         last = st.session_state.debug_log[-1]
 
-        # Intent badges
         badge_map = {
             "SEARCH": "badge-search",
             "PREFERENCE_UPDATE": "badge-pref",
@@ -177,8 +161,8 @@ with st.sidebar:
         st.markdown(badges_html, unsafe_allow_html=True)
 
         fields = {
-            "Recipient": last.get("recipient"),
-            "Allergies": ", ".join(last.get("allergies") or []) or None,
+            "Recipient": last.get("search_recipient"),
+            "Allergies": json.dumps(last.get("allergies")) if last.get("allergies") else None,
             "Location": last.get("location"),
             "Deadline": last.get("deadline"),
             "Tracking": last.get("tracking_code"),
@@ -218,7 +202,8 @@ for msg in st.session_state.messages:
                 unsafe_allow_html=True,
             )
 
-# Chat input
+# ── Chat input ────────────────────────────────────────────────────────────────
+
 user_input = st.chat_input("Ask me anything about gifts, delivery, or save a preference...")
 
 if user_input:
@@ -227,28 +212,29 @@ if user_input:
     with st.chat_message("user", avatar="🧑"):
         st.markdown(user_input)
 
-    # Route and respond
+    # Route and stream response
     with st.chat_message("assistant", avatar="🎁"):
-        with st.spinner("Thinking..."):
-            # Monkey-patch classify_intents to capture classification for sidebar
-            router = st.session_state.router
-            original_classify = router.classify_intents
 
-            captured = {}
-            def _capturing_classify(message):
-                result = original_classify(message)
-                captured.update(result)
-                return result
+        # Capture classification for sidebar debug panel
+        router = st.session_state.router
+        original_classify = router.classify_intents
+        captured = {}
 
-            router.classify_intents = _capturing_classify
+        def _capturing_classify(message):
+            result = original_classify(message)
+            captured.update(result)
+            return result
 
-            t0 = time.time()
-            response = router.route(user_input)
-            elapsed = time.time() - t0
+        router.classify_intents = _capturing_classify
 
-            router.classify_intents = original_classify
+        t0 = time.time()
 
-        st.markdown(response)
+        # ← key change: st.write_stream instead of spinner + st.markdown
+        response = st.write_stream(router.route_stream(user_input))
+
+        elapsed = time.time() - t0
+        router.classify_intents = original_classify
+
         st.markdown(
             f'<div class="latency-chip">⏱ {elapsed:.2f}s</div>',
             unsafe_allow_html=True,
