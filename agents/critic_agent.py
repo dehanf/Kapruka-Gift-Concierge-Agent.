@@ -1,7 +1,7 @@
 # agents/critic_agent.py
 
 import json
-from utils.config import CLAUDE_MODEL, CLAUDE_MAX_TOKENS
+from utils.config import CLAUDE_MODEL, CLAUDE_MAX_TOKENS_CRITIQUE
 from utils.prompts import CRITIC_SYSTEM_PROMPT
 from infrastructure.llm.client import chat
 
@@ -40,7 +40,7 @@ Recommendation to review:
     raw = chat(
         system=CRITIC_SYSTEM_PROMPT,
         messages=[{"role": "user", "content": context}],
-        max_tokens=CLAUDE_MAX_TOKENS,
+        max_tokens=CLAUDE_MAX_TOKENS_CRITIQUE,
         model=CLAUDE_MODEL,
     )
 

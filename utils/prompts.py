@@ -9,11 +9,13 @@ INTENTS:
 
 Rules:
 - "intents" must always be a list, even if only one intent
-- Always put PREFERENCE_UPDATE first if present (must save before searching)
+- Always put PREFERENCE_UPDATE first if present
 - Always put LOGISTICS last if present
 - Set fields to null if not mentioned
-- If the user refers to themselves ("I", "me", "myself"), set "recipient" to "self"
-- "allergies" must list every allergen or disliked ingredient mentioned, even if phrased as "I don't like X"
+- If the user refers to themselves ("I", "me", "myself"), use "user" as the recipient key
+- "allergies" is a dictionary — keys are recipient names, values are lists of allergens
+- "preferences" is a dictionary — keys are recipient names, values are lists of preferences
+- "search_recipient" is the single recipient the current SEARCH is for
 - "search_query" should be a clean product search string stripped of allergy/preference info
 - "tracking_code" must be a 12-digit numeric code if present, otherwise null
 
@@ -21,26 +23,29 @@ EXAMPLES:
 
 User: "I don't like nuts and I'm allergic to chocolate, what cakes can I buy?"
 Output:
-{"intents":["PREFERENCE_UPDATE","SEARCH"],"recipient":"user","allergies":["nuts","chocolate"],"location":null,"deadline":null,"search_query":"cakes","preference_note":"dislikes nuts, allergic to chocolate","tracking_code":null}
+{"intents":["PREFERENCE_UPDATE","SEARCH"],"allergies":{"user":["nuts","chocolate"]},"preferences":{},"search_recipient":"user","location":null,"deadline":null,"search_query":"cakes","tracking_code":null}
 
 User: "Find a birthday gift for my wife, she loves vanilla"
 Output:
-{"intents":["PREFERENCE_UPDATE","SEARCH"],"recipient":"wife","allergies":null,"location":null,"deadline":null,"search_query":"birthday gift","preference_note":"loves vanilla","tracking_code":null}
+{"intents":["PREFERENCE_UPDATE","SEARCH"],"allergies":{},"preferences":{"wife":["vanilla"]},"search_recipient":"wife","location":null,"deadline":null,"search_query":"birthday gift","tracking_code":null}
 
 User: "Can you deliver flowers to Kandy by Sunday?"
 Output:
-{"intents":["SEARCH","LOGISTICS"],"recipient":null,"allergies":null,"location":"Kandy","deadline":"Sunday","search_query":"flowers","preference_note":null,"tracking_code":null}
+{"intents":["SEARCH","LOGISTICS"],"allergies":{},"preferences":{},"search_recipient":null,"location":"Kandy","deadline":"Sunday","search_query":"flowers","tracking_code":null}
 
 User: "My wife is allergic to dairy. Find her a cake and check if you deliver to Galle"
 Output:
-{"intents":["PREFERENCE_UPDATE","SEARCH","LOGISTICS"],"recipient":"wife","allergies":["dairy"],"location":"Galle","deadline":null,"search_query":"cake","preference_note":"wife is allergic to dairy","tracking_code":null}
+{"intents":["PREFERENCE_UPDATE","SEARCH","LOGISTICS"],"allergies":{"wife":["dairy"]},"preferences":{},"search_recipient":"wife","location":"Galle","deadline":null,"search_query":"cake","tracking_code":null}
+
+User: "My wife loves chocolate and my mother is allergic to nuts, find gifts for both"
+Output:
+{"intents":["PREFERENCE_UPDATE","SEARCH"],"allergies":{"mother":["nuts"]},"preferences":{"wife":["chocolate"]},"search_recipient":"wife","location":null,"deadline":null,"search_query":"gifts","tracking_code":null}
 
 User: "What is the status of my order 123456789012"
 Output:
-{"intents":["LOGISTICS"],"recipient":null,"allergies":null,"location":null,"deadline":null,"search_query":null,"preference_note":null,"tracking_code":"123456789012"}
+{"intents":["LOGISTICS"],"allergies":{},"preferences":{},"search_recipient":null,"location":null,"deadline":null,"search_query":null,"tracking_code":"123456789012"}
 
 Respond ONLY with the JSON object. No explanation, no markdown."""
-
 #================================================================================================================
 
 CATALOG_SYSTEM_PROMPT = """You are a warm and helpful gift concierge for Kapruka, a Sri Lankan gifting platform.

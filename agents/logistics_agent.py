@@ -1,6 +1,6 @@
 # agents/logistics_agent.py
 
-from utils.config import CLAUDE_MODEL, CLAUDE_MAX_TOKENS
+from utils.config import CLAUDE_MODEL, CLAUDE_MAX_TOKENS_LOGISTIC
 from utils.prompts import LOGISTICS_SYSTEM_PROMPT
 from infrastructure.llm.client import chat
 

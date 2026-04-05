@@ -17,8 +17,14 @@ class SemanticMemory:
         
         if os.path.exists(self.filepath):
             with open(self.filepath, "r") as f:
-                self.profiles = json.load(f)
-            print(f"Loaded {len(self.profiles)} recipient profiles.")
+                content = f.read().strip()
+            if content:  # ← only parse if file has content
+                self.profiles = json.loads(content)
+                print(f"Loaded {len(self.profiles)} recipient profiles.")
+            else:
+                self.profiles = {}
+                print("Empty profiles file. Starting fresh.")
+
         else:
             self.profiles = {}
             print("No profiles found. Starting fresh.")

@@ -30,6 +30,7 @@ help:
 	@echo ""
 	@echo "  App"
 	@echo "    make start                Start the concierge CLI (main.py)"
+	@echo "    make ui                   Launch the Streamlit UI (app.py)"
 	@echo "    make status               Show Qdrant collection info"
 	@echo ""
 	@echo "  Housekeeping"
@@ -83,6 +84,9 @@ status:
 start:
 	$(PYTHON) main.py
 
+ui:
+	streamlit run app.py
+
 # ── Housekeeping ──────────────────────────────────────────────────────────────
 
 install:
@@ -96,4 +100,4 @@ clean-cache:
 
 .PHONY: help crawl crawl-cakes crawl-flowers crawl-books crawl-fashion crawl-gifts \
         crawl-vouchers crawl-electronics ingest ingest-fresh run run-fresh \
-        status start install install-playwright clean-cache
+        status start ui install install-playwright clean-cache

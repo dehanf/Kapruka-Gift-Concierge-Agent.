@@ -1,10 +1,12 @@
 # agents/router.py
 
 import json
+import concurrent.futures
+import threading
 from memory.st_memory import ShortTermMemory
-from memory.semantic_memory import add_or_update_profile
+from memory.semantic_memory import add_or_update_profile,get_profile
 from agents import catalog_agent, logistics_agent
-from utils.config import CLAUDE_MODEL, CLAUDE_MAX_TOKENS
+from utils.config import CLAUDE_MODEL, CLAUDE_MAX_TOKENS_CLASSIFY
 from utils.prompts import ROUTER_SYSTEM_PROMPT
 from infrastructure.llm.client import chat
 
@@ -24,7 +26,7 @@ class Router:
         raw = chat(
             system=ROUTER_SYSTEM_PROMPT,
             messages=messages,
-            max_tokens=512,   # classification JSON needs more room than general responses
+            max_tokens=CLAUDE_MAX_TOKENS_CLASSIFY, 
             model=CLAUDE_MODEL,
         )
 
@@ -40,17 +42,23 @@ class Router:
             result = json.loads(clean)
             if isinstance(result.get("intents"), str):
                 result["intents"] = [result["intents"]]
+            if not isinstance(result.get("allergies"), dict):
+                result["allergies"] = {}
+            if not isinstance(result.get("preferences"), dict):
+                result["preferences"] = {}
             return result
+
         except json.JSONDecodeError:
             return {
-                "intents": ["SEARCH"],
-                "recipient": None,
-                "allergies": None,
-                "location": None,
-                "deadline": None,
-                "search_query": user_message,
-                "preference_note": None
-            }
+            "intents": ["SEARCH"],
+            "allergies": {},
+            "preferences": {},
+            "search_recipient": None,
+            "location": None,
+            "deadline": None,
+            "search_query": user_message,
+            "tracking_code": None
+        }
 
     def route(self, user_message: str) -> str:
 
@@ -62,40 +70,74 @@ class Router:
         print(f"Router Decision : {intents}")
         print(f"Extracted       : {json.dumps(classification, indent=2)}")
 
+
+        # 2. Load old profile
+        recipient = classification.get("search_recipient")
+        if isinstance(recipient, list):
+            recipient = recipient[0] if recipient else None
+
+        old_profile = get_profile(self.customer_id,recipient) if recipient else {}
+
+        # 3. Build new profile from user query
+
+        allergies_dict = classification.get("allergies") or {}
+        preferences_dict = classification.get("preferences") or {}
+
+        # For the current search recipient specifically
+        new_profile = {
+                "allergies": allergies_dict.get(recipient, []) if recipient else [],
+                "preferences": preferences_dict.get(recipient, []) if recipient else [],
+                "location": classification.get("location") or ""
+                        }
         responses = []
+        # 4. Run preferences update in background
 
-        # 2. Run agents
-        for intent in intents:
+    
+        if "PREFERENCE_UPDATE" in intents:
+            all_recipients = set(list(allergies_dict.keys()) + list(preferences_dict.keys()))
+            for name in all_recipients:
+                t = threading.Thread(target=add_or_update_profile, kwargs={
+                    "customer_id": self.customer_id,
+                    "name": name,
+                    "allergies": allergies_dict.get(name, []),
+                    "preferences": preferences_dict.get(name, []),
+                    "location": classification.get("location") or ""
+                })
+                t.daemon = True
+                t.start()
+            responses.append(f"Got it — I'm updating preferences for {', '.join(all_recipients)}.")
 
-            if intent == "PREFERENCE_UPDATE":
-                result = add_or_update_profile(
-                    customer_id=self.customer_id,
-                    name=classification.get("recipient"),
-                    preferences=classification.get("preference_note"),
-                    allergies=classification.get("allergies"),
-                    location = classification.get("location")
-                )
-                responses.append(result)
+        # 5. SEARCH and LOGISTICS run in parallel
+        tasks = {}
 
-            elif intent == "SEARCH":
-                result = catalog_agent.run(
-                    customer_id=self.customer_id,
-                    recipient=classification.get("recipient"),
-                    search_query=classification.get("search_query") or user_message
-                )
-                responses.append(result)
+        if "SEARCH" in intents:
+            tasks["SEARCH"] = lambda: catalog_agent.run(
+                customer_id=self.customer_id,
+                recipient=recipient,
+                search_query=classification.get("search_query") or user_message,
+                old_profile=old_profile,
+                new_profile=new_profile
+            )
 
-            elif intent == "LOGISTICS":
-                result = logistics_agent.run(
-                    location=classification.get("location"),
-                    deadline=classification.get("deadline"),
-                    tracking_code=classification.get("tracking_code")
-                )
-                responses.append(result)
+        if "LOGISTICS" in intents:
+            tasks["LOGISTICS"] = lambda: logistics_agent.run(
+                location=classification.get("location"),
+                deadline=classification.get("deadline"),
+                tracking_code=classification.get("tracking_code")
+            )
+
+        if tasks:
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                futures = {name: executor.submit(fn) for name, fn in tasks.items()}
+                for name, future in futures.items():
+                    try:
+                        responses.append(future.result())
+                    except Exception as e:
+                        responses.append(f"[{name} agent error: {e}]")
 
         final_response = "\n\n".join(responses)
 
-        # 3. Save BOTH to memory after everything is done
+        # 6. Save to memory
         self.st_memory.add_message("user", user_message)
         self.st_memory.add_message("assistant", final_response)
 

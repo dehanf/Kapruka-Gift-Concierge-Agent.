@@ -1,9 +1,8 @@
 # agents/catalog_agent.py
 
 from memory.lt_memory import search_catalog
-from memory.semantic_memory import get_profile
 from agents import critic_agent
-from utils.config import CLAUDE_MODEL, CLAUDE_MAX_TOKENS, MAX_REFLECTION_ROUNDS, CATALOG_SEARCH_TOP_K, CATALOG_MAX_PRODUCTS
+from utils.config import CLAUDE_MODEL, CLAUDE_MAX_TOKENS_RESPOND, CLAUDE_MAX_TOKENS_CRITIQUE, MAX_REFLECTION_ROUNDS, CATALOG_SEARCH_TOP_K, CATALOG_MAX_PRODUCTS
 from utils.prompts import CATALOG_SYSTEM_PROMPT, REVISE_SYSTEM_PROMPT
 from infrastructure.llm.client import chat
 
@@ -12,7 +11,7 @@ def _generate(user_content: str) -> str:
     return chat(
         system=CATALOG_SYSTEM_PROMPT,
         messages=[{"role": "user", "content": user_content}],
-        max_tokens=CLAUDE_MAX_TOKENS,
+        max_tokens=CLAUDE_MAX_TOKENS_RESPOND,
         model=CLAUDE_MODEL,
     )
 
@@ -26,16 +25,16 @@ def _revise(recommendation: str, issues: list, suggestion: str) -> str:
     return chat(
         system=REVISE_SYSTEM_PROMPT,
         messages=[{"role": "user", "content": content}],
-        max_tokens=CLAUDE_MAX_TOKENS,
+        max_tokens=CLAUDE_MAX_TOKENS_RESPOND,
         model=CLAUDE_MODEL,
     )
 
 
-def run(customer_id: str, recipient: str, search_query: str) -> str:
+def run(customer_id: str, recipient: str, search_query: str,old_profile: dict, new_profile: dict) -> str:
 
-    # 1. Get recipient profile for allergy/preference filtering
-    profile = get_profile(customer_id, recipient) if recipient else {}
-    allergies = [a.lower() for a in profile.get("allergies", [])]
+    # 1. Use old profile directly - no get_profile() call needed
+    profile = old_profile
+    allergies = [a.lower() for a in profile.get("allergies",[])]
 
     # 2. Search the catalog
     products = search_catalog(search_query, top_k=CATALOG_SEARCH_TOP_K)
@@ -66,7 +65,7 @@ def run(customer_id: str, recipient: str, search_query: str) -> str:
     # 4. Keep top N after filtering
     products = products[:CATALOG_MAX_PRODUCTS]
 
-    # 5. Build context string for Claude
+    # 5. Build context using old profile 
     profile_summary = ""
     if profile:
         profile_summary = (
@@ -92,12 +91,32 @@ def run(customer_id: str, recipient: str, search_query: str) -> str:
     recommendation = _generate(user_content)
     print(f"\n[Catalog] Draft recommendation generated.")
 
-    # 7. Reflection loop
+    # 7. Merge old profile and new profile
+    merged_profile = {
+    "allergies": list(set(
+        [a.lower() for a in old_profile.get("allergies", [])] +
+        [a.lower() for a in new_profile.get("allergies", [])]
+    )),
+    "preferences": list(set(
+        old_profile.get("preferences", []) +
+        new_profile.get("preferences", [])
+    )),
+    "location": new_profile.get("location") or old_profile.get("location", "unknown")
+
+    }
+    
+    # 8. Skip critic if no constraints at all
+    skip_critic = not merged_profile.get("allergies") and not merged_profile.get("preferences")
+    if skip_critic:
+        print("[Critic] Skipped — no constraints.")
+        return recommendation
+
+    # 9. Reflection loop
     for round_num in range(1, MAX_REFLECTION_ROUNDS + 1):
         critique = critic_agent.critique(
             recommendation=recommendation,
             search_query=search_query,
-            profile=profile,
+            profile=merged_profile,
             recipient=recipient or "",
             products=products
         )

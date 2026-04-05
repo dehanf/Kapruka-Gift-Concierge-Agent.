@@ -20,6 +20,13 @@ from infrastructure.db.qdrant_store import get_client, COLLECTION_NAME
 from qdrant_client.models import Distance, VectorParams
 from utils.config import LT_EMBEDDING_MODEL, LT_SEARCH_TOP_K
 
+
+
+
+
+encoder = SentenceTransformer(LT_EMBEDDING_MODEL)
+
+
 def cosine_similarity(vec1 : list , vec2 : list):
     a = np.array(vec1)
     b = np.array(vec2)
@@ -30,7 +37,7 @@ def cosine_similarity(vec1 : list , vec2 : list):
 
 def search_catalog(query : str, top_k : int = LT_SEARCH_TOP_K):
 
-    encoder = SentenceTransformer(LT_EMBEDDING_MODEL)
+
     query_vector = encoder.encode(query).tolist()
 
     client = get_client()

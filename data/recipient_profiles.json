@@ -1,28 +1,24 @@
 {
   "001": {
-    "self and wife": {
+    "user": {
       "allergies": [
-        "almonds"
+        "nuts"
       ],
-      "preferences": [
-        "wife and self are allergic to almonds, love chocolate"
+      "preferences": [],
+      "location": ""
+    },
+    "wife": {
+      "allergies": [
+        "chocolate"
       ],
+      "preferences": [],
       "location": ""
     },
     "son": {
       "allergies": [],
       "preferences": [
-        "loves tech, more into computers",
-        "son loves tech"
-      ],
-      "location": ""
-    }
-  },
-  "002": {
-    "mother": {
-      "allergies": [],
-      "preferences": [
-        "mother likes books"
+        "tech",
+        "laptop accessories"
       ],
       "location": ""
     }

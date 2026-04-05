@@ -9,6 +9,14 @@ import streamlit as st
 from agents.router import Router
 from memory.semantic_memory import SemanticMemory
 
+
+# ── Warmup ────────────────────────────────────────────────────────────────────
+from infrastructure.db.qdrant_store import get_client
+from memory.lt_memory import _encoder
+
+get_client()
+_encoder.encode("warmup", show_progress_bar=False)
+
 # ── Page config ───────────────────────────────────────────────────────────────
 
 st.set_page_config(

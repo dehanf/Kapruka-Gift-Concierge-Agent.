@@ -1,9 +1,12 @@
 claude:
   model: "anthropic/claude-sonnet-4-5"
-  max_tokens: 300
+  max_tokens_classify: 512
+  max_tokens_respond: 600
+  max_tokens_critique: 300
+  max_tokens_logistics: 300
 
 catalog_agent:
-  max_reflection_rounds: 2
+  max_reflection_rounds: 1
   search_top_k: 8
   max_products_after_filter: 5
 
