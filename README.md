@@ -1,66 +1,104 @@
 # Kapruka Gift Concierge
 
-An AI-powered gift concierge for [Kapruka](https://www.kapruka.com), Sri Lanka's leading gifting platform. The system understands natural language requests, remembers recipient preferences and allergies, searches a vector catalog, and produces quality-reviewed recommendations through a multi-agent reflection loop.
+An AI-powered gift concierge for [Kapruka](https://www.kapruka.com), Sri Lanka's leading gifting platform. The system understands natural language, remembers recipient preferences and allergies across sessions, searches a 4,700+ product vector catalog, checks delivery feasibility across all 25 Sri Lankan districts, and produces quality-reviewed recommendations through a multi-agent reflection loop.
 
 ---
 
-## How It Works
+## Architecture
 
 ```
 User Message
      │
      ▼
-┌─────────────┐
-│   Router    │  Classifies intents: PREFERENCE_UPDATE / SEARCH / LOGISTICS
-└──────┬──────┘
-       │
-  ┌────┴──────────────┐
-  │                   │
-  ▼                   ▼
-Profile Update    Catalog Agent ──► Critic Agent
-(Semantic Memory)      │                  │
-                       └──── Reflection ──┘
-                                   │
-                              Final Response
+┌─────────────────────────────────────────┐
+│                 Router                  │
+│  Classifies intents via few-shot LLM    │
+│  PREFERENCE_UPDATE │ SEARCH │ LOGISTICS │
+└──────┬──────────────────────┬───────────┘
+       │                      │
+       │ (background thread)  │ (parallel threads)
+       ▼                      ├──────────────────────┐
+┌──────────────┐              ▼                      ▼
+│  Semantic    │       ┌─────────────┐      ┌────────────────┐
+│  Memory      │       │  Catalog    │      │   Logistics    │
+│  (JSON)      │       │  Agent      │      │   Agent        │
+└──────────────┘       │             │      │                │
+                       │  1. RAG     │      │  District      │
+                       │  2. Filter  │      │  coverage      │
+                       │  3. Draft   │      │  check +       │
+                       │  4. Critic  │      │  LLM response  │
+                       │  5. Revise* │      └────────────────┘
+                       └─────────────┘
+                              │
+                       ┌──────▼───────┐
+                       │ Final merged │
+                       │  response    │
+                       └──────────────┘
+
+* Critic skipped when no allergen/preference constraints exist
 ```
 
-1. **Router** — classifies the user's message into one or more intents and extracts structured fields (recipient, allergies, location, search query).
-2. **Semantic Memory** — persists recipient profiles (allergies, preferences, location) to disk. Updated before any search runs.
-3. **Catalog Agent** — retrieves the top matching products from the vector store, filters allergens, and generates a natural-language recommendation.
-4. **Critic Agent** — reviews the recommendation for safety, relevance, accuracy, and quality. If it fails, the catalog agent revises and the loop repeats (up to `MAX_REFLECTION_ROUNDS`).
+### Data Flow
+
+```
+kapruka.com
+    │  Playwright scraper (services/crawl.py)
+    ▼
+data/catalog.json  (4,754 products across 7 categories)
+    │  Sentence-transformer embeddings (services/ingest_to_qdrant.py)
+    ▼
+Qdrant Cloud  ◄──── lt_memory.py (semantic search at query time)
+                          │
+                    Router → Catalog Agent → Critic → Response
+```
 
 ---
 
 ## Project Structure
 
 ```
+kapruka-gift-concierge/
+│
 ├── agents/
-│   ├── router.py           # Intent classifier and dispatcher
-│   ├── catalog_agent.py    # Product search + recommendation generation
-│   └── critic_agent.py     # Quality reviewer for the reflection loop
+│   ├── router.py              # Intent classifier + parallel dispatcher
+│   ├── catalog_agent.py       # RAG search + recommendation + reflection loop
+│   ├── critic_agent.py        # Quality reviewer (safety, relevance, accuracy)
+│   └── logistics_agent.py     # Delivery feasibility for all 25 SL districts
 │
 ├── memory/
-│   ├── st_memory.py        # Short-term conversation history (in-memory)
-│   ├── lt_memory.py        # Long-term semantic search over the vector store
-│   └── semantic_memory.py  # Recipient profile storage (JSON on disk)
+│   ├── st_memory.py           # Short-term: in-memory conversation buffer
+│   ├── lt_memory.py           # Long-term: Qdrant vector search (singleton encoder)
+│   └── semantic_memory.py     # Semantic: recipient profiles saved to JSON
 │
 ├── infrastructure/
+│   ├── llm/
+│   │   └── client.py          # Centralised OpenRouter LLM client (single chat() fn)
 │   └── db/
-│       └── qdrant_store.py # Qdrant Cloud client and collection management
+│       └── qdrant_store.py    # Qdrant Cloud client + collection management
 │
 ├── services/
-│   ├── crawl.py            # Playwright scraper — builds data/catalog.json
-│   └── ingest_to_qdrant.py # Embeds catalog and upserts into Qdrant
+│   ├── crawl.py               # Playwright headless scraper → catalog.json
+│   └── ingest_to_qdrant.py    # Embed catalog + upsert to Qdrant
+│
+├── cli/
+│   └── pipeline.py            # argparse CLI for crawl / ingest / status
 │
 ├── utils/
-│   ├── config.py           # Loads config.yaml and exposes typed constants
-│   └── prompts.py          # All LLM system prompts in one place
+│   ├── config.py              # Typed constants loaded from config.yaml
+│   └── prompts.py             # All LLM system prompts (with few-shot examples)
 │
 ├── data/
-│   ├── catalog.json        # Combined product catalog (generated by crawler)
-│   └── recipient_profiles.json  # Saved recipient profiles (auto-created)
+│   ├── catalog.json           # Combined product catalog (generated by crawler)
+│   └── recipient_profiles.json  # Persisted recipient profiles (auto-created)
 │
-├── config.yaml             # Single source of truth for all parameters
+├── docs/
+│   ├── performance_report.md  # Bottleneck analysis with file:line references
+│   └── performance_guide.md   # Implementation guide for remaining optimisations
+│
+├── app.py                     # Streamlit UI (run with: streamlit run app.py)
+├── main.py                    # CLI entry point (run with: python main.py)
+├── config.yaml                # Single source of truth for all parameters
+├── Makefile                   # Shortcut commands for all pipeline operations
 └── requirements.txt
 ```
 
@@ -71,61 +109,116 @@ Profile Update    Catalog Agent ──► Critic Agent
 ### 1. Install dependencies
 
 ```bash
-pip install -r requirements.txt
-pip install anthropic sentence-transformers numpy pyyaml
+make install
 ```
 
-### 2. Configure environment variables
+Or manually:
+
+```bash
+pip install -r requirements.txt
+```
+
+### 2. Configure environment
 
 Create a `.env` file in the project root:
 
 ```env
+OPENROUTER_API_KEY=your_openrouter_api_key
 QDRANT_URL=https://your-cluster.qdrant.io
 QDRANT_API_KEY=your_qdrant_api_key
 ```
 
-The Anthropic API key is picked up automatically from the environment:
+> **Optional:** Add `HF_TOKEN=your_token` to silence HuggingFace Hub warnings and get higher download rate limits.
 
-```env
-ANTHROPIC_API_KEY=your_anthropic_api_key
-```
-
-### 3. Build the catalog
-
-Scrape Kapruka and generate `data/catalog.json`:
+### 3. Install Playwright browser
 
 ```bash
-python services/crawl.py
+make install-playwright
 ```
 
-> This uses Playwright (Chromium). Install the browser with `playwright install chromium` if you haven't already.
-
-### 4. Ingest into Qdrant
-
-Embed the catalog and upload to your Qdrant collection:
+### 4. Build the catalog
 
 ```bash
-python services/ingest_to_qdrant.py
+make crawl        # scrape all 7 categories → data/catalog.json
+make ingest       # embed + upsert into Qdrant
+```
+
+Or run both in one command:
+
+```bash
+make run
 ```
 
 ---
 
-## Configuration
+## Running the App
 
-All parameters are in `config.yaml`. Edit this file to tune behaviour — no code changes needed.
+### Streamlit UI (recommended)
+
+```bash
+streamlit run app.py
+```
+
+Features:
+- Dark-themed chat interface with streaming responses
+- Sidebar shows live recipient profiles (auto-refreshes after each message)
+- Intent badge panel (SEARCH / PREFERENCE_UPDATE / LOGISTICS) with extracted fields
+- Per-response latency chip
+- Session scoped to customer ID with reset button
+
+### CLI
+
+```bash
+python main.py
+```
+
+---
+
+## Makefile Commands
+
+```bash
+make help                 # list all commands
+
+# Pipeline
+make crawl                # scrape all 7 categories
+make crawl-cakes          # scrape one category (also: flowers, books, fashion, gifts, vouchers, electronics)
+make ingest               # embed + upsert catalog.json → Qdrant
+make ingest-fresh         # drop collection first, then ingest
+make run                  # crawl all + ingest
+make run-fresh            # crawl all + fresh collection + ingest
+make status               # show Qdrant collection stats
+
+# App
+make start                # CLI (python main.py)
+make ui                   # Streamlit (streamlit run app.py)
+
+# Housekeeping
+make install              # pip install -r requirements.txt
+make install-playwright   # playwright install chromium
+make clean-cache          # remove __pycache__ folders
+```
+
+---
+
+## Configuration (`config.yaml`)
+
+All tunable parameters in one file — no code changes needed.
 
 ```yaml
 claude:
-  model: "claude-opus-4-5"
-  max_tokens: 300
+  model: "anthropic/claude-sonnet-4-5"
+  max_tokens_classify: 512    # router classification JSON
+  max_tokens_respond:  600    # catalog recommendations
+  max_tokens_critique: 300    # critic JSON (compact)
+  max_tokens_logistics: 300   # logistics responses
 
 catalog_agent:
-  max_reflection_rounds: 2   # how many critic-revise cycles before accepting
-  search_top_k: 8            # products fetched from vector store
+  max_reflection_rounds: 1    # critic-revise cycles (0 = skip critic entirely)
+  search_top_k: 8             # products fetched from Qdrant before filtering
   max_products_after_filter: 5
 
 short_term_memory:
-  max_turns: 10              # conversation turns kept in context
+  max_turns: 10               # conversation turns kept in session context
 
 lt_memory:
   embedding_model: "sentence-transformers/all-MiniLM-L6-v2"
@@ -144,27 +237,71 @@ ingest:
 
 ---
 
-## Usage
+## Memory System (3-Tier)
 
-```python
-from agents.router import Router
+| Tier | File | Storage | Scope |
+|------|------|---------|-------|
+| Short-term | `memory/st_memory.py` | In-memory list | Current session only |
+| Long-term | `memory/lt_memory.py` | Qdrant Cloud (vector) | Product catalog, persistent |
+| Semantic | `memory/semantic_memory.py` | JSON file on disk | Recipient profiles, persistent across sessions |
 
-router = Router(customer_id="customer_001")
-
-response = router.route("I need a birthday cake for my wife. She's allergic to nuts.")
-print(response)
+**Semantic memory structure:**
+```json
+{
+  "customer_001": {
+    "wife": {
+      "allergies": ["nuts", "dairy"],
+      "preferences": ["loves vanilla", "prefers local brands"],
+      "location": "Kandy"
+    },
+    "self": {
+      "allergies": ["chocolate"],
+      "preferences": ["likes tech gifts"],
+      "location": ""
+    }
+  }
+}
 ```
 
-The router handles everything: updating the recipient profile, searching the catalog, and returning a reviewed recommendation.
+---
+
+## Agent Design
+
+### Router (`agents/router.py`)
+- Classifies intent using few-shot prompting: `PREFERENCE_UPDATE`, `SEARCH`, `LOGISTICS`
+- Extracts structured fields: recipient, allergies, preferences, location, deadline, tracking code
+- Runs `PREFERENCE_UPDATE` in a background thread (non-blocking)
+- Runs `SEARCH` and `LOGISTICS` in parallel via `ThreadPoolExecutor`
+
+### Catalog Agent (`agents/catalog_agent.py`)
+- Receives old + new recipient profiles (no redundant disk reads)
+- Retrieves top-K products from Qdrant via semantic search
+- Filters allergens deterministically in code (not LLM-dependent)
+- Generates a recommendation, then passes to the critic
+- Skips the critic entirely when no constraints exist (faster path)
+
+### Critic Agent (`agents/critic_agent.py`)
+Checks the recommendation against four dimensions:
+1. **Safety** — does it recommend anything with the recipient's allergens?
+2. **Relevance** — does it match the search query?
+3. **Accuracy** — are prices and stock status correct?
+4. **Quality** — is it specific and helpful, not generic?
+
+Returns `{"approved": true}` or `{"approved": false, "issues": [...], "suggestion": "..."}`.
+
+### Logistics Agent (`agents/logistics_agent.py`)
+- Hardcoded coverage map for all 25 Sri Lankan districts (3 delivery tiers)
+- Tier 1: next-day (Colombo, Gampaha, Kalutara)
+- Tier 2: 2–3 days (Kandy, Galle, Kurunegala, and 7 others)
+- Tier 3: 3–5 days (Jaffna, Trincomalee, Badulla, and 7 others)
+- Tracking code stub: ready for Playwright order-status scraper integration
 
 ---
 
 ## Scraped Categories
 
-The crawler covers the following Kapruka categories:
-
-| Category | URL |
-|---|---|
+| Category | Kapruka URL |
+|----------|-------------|
 | Cakes | `/online/cakes` |
 | Flowers | `/online/flowers` |
 | Books | `/online/books` |
@@ -181,13 +318,13 @@ Each product stores: `name`, `price`, `weight`, `category`, `availability`, `des
 
 ```json
 {
-  "name": "Chocolate Fudge Cake",
-  "price": "Rs. 2,500",
-  "weight": "1kg",
+  "name": "Vanilla Congrats Cupcakes Set of 6",
+  "price": "RS.3,200",
+  "weight": "",
   "category": "cakes",
   "availability": "In Stock",
-  "description": "Rich chocolate fudge cake with ganache frosting.",
-  "specs": "Ingredients: flour, cocoa, sugar, butter, eggs",
+  "description": "Set of 6 congratulatory vanilla cupcakes with buttercream frosting.",
+  "specs": "Ingredients: flour, sugar, butter, eggs, vanilla extract",
   "product_url": "https://www.kapruka.com/..."
 }
 ```
@@ -196,8 +333,22 @@ Each product stores: `name`, `price`, `weight`, `category`, `availability`, `des
 
 ## Key Design Decisions
 
-- **Reflection loop** — the critic agent enforces safety (allergen checks) and accuracy (price/stock verification) before a recommendation is returned. Controlled by `max_reflection_rounds` in `config.yaml`.
-- **Preference-first ordering** — the router always runs `PREFERENCE_UPDATE` before `SEARCH`, so a message like *"My wife is allergic to nuts, find her a cake"* saves the allergy before searching.
-- **Allergen filtering** — done in code (not in the prompt) against `name + description + specs`, so it is deterministic and not LLM-dependent.
-- **Centralised config** — `config.yaml` + `utils/config.py` mean every tunable value has one home.
-- **Centralised prompts** — all system prompts live in `utils/prompts.py` for easy iteration without touching agent logic.
+- **No LangChain / CrewAI** — all orchestration is plain Python. Router, agents, and memory are custom-built.
+- **Few-shot prompting for classification** — the router prompt includes 5 labelled examples. Instructions alone were insufficient for consistent multi-intent detection.
+- **Allergen filtering in code** — deterministic string matching against `name + description + specs`. Not delegated to the LLM, so it cannot be hallucinated away.
+- **Preference-first ordering** — `PREFERENCE_UPDATE` always runs before `SEARCH` so a message like *"My wife is allergic to nuts, find her a cake"* saves the allergy before the search executes.
+- **Critic skip optimisation** — when there are no allergens or preferences, the critic round is bypassed entirely, saving 1.5–2.5 s per query.
+- **Centralised LLM client** — all four agents call `infrastructure/llm/client.chat()`. Switching from OpenRouter to direct Anthropic API is a single-file change.
+- **Centralised config** — every tunable value lives in `config.yaml`. Behaviour can be changed without touching agent code.
+- **Parallel agent execution** — SEARCH and LOGISTICS run concurrently via `ThreadPoolExecutor`, eliminating sequential wait time on combined queries.
+
+---
+
+## Submission Checklist
+
+- [x] Part 1 — Playwright crawler (7 categories, 4,754 products)
+- [x] Part 2 — 3-tier memory stack (ST / LT-RAG / Semantic)
+- [x] Part 3 — Router + Catalog Agent + Logistics Agent
+- [x] Part 4 — Reflection loop (Draft → Critic → Revise)
+- [ ] Part 5 — Performance metrics & technical report (in progress)
+- [x] Bonus — Streamlit UI with streaming, intent panel, profile sidebar
