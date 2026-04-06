@@ -4,7 +4,7 @@ import threading
 from memory.st_memory import ShortTermMemory
 from memory.semantic_memory import add_or_update_profile, get_profile
 from agents import catalog_agent, logistics_agent
-from utils.config import CLAUDE_MODEL, CLAUDE_MAX_TOKENS_CLASSIFY
+from utils.config import CLAUDE_MODEL_CLASSIFY, CLAUDE_MAX_TOKENS_CLASSIFY
 from utils.prompts import ROUTER_SYSTEM_PROMPT
 from infrastructure.llm.client import chat
 
@@ -23,7 +23,7 @@ class Router:
             system=ROUTER_SYSTEM_PROMPT,
             messages=messages,
             max_tokens=CLAUDE_MAX_TOKENS_CLASSIFY,
-            model=CLAUDE_MODEL,
+            model=CLAUDE_MODEL_CLASSIFY,
         )
 
         clean = raw.strip()
