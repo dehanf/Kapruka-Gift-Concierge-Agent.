@@ -10,14 +10,14 @@ claude:
 catalog_agent:
   max_reflection_rounds: 1
   search_top_k: 8
-  max_products_after_filter: 5
+  max_products_after_filter: 10
 
 short_term_memory:
   max_turns: 10
 
 lt_memory:
   embedding_model: "sentence-transformers/all-MiniLM-L6-v2"
-  search_top_k: 5
+  search_top_k: 10
 
 qdrant:
   collection_name: "kapruka_catalog"
