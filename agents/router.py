@@ -211,7 +211,7 @@ class Router:
 
         # 5. Firing logistics in background
         if "LOGISTICS" in intents:
-            logistics_executor = concurrent.futures.ThreadPoolExecutor()
+            logistics_executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
             logistics_future = logistics_executor.submit(
                 logistics_agent.run,
                 location=classification.get("location"),
@@ -219,25 +219,30 @@ class Router:
                 tracking_code=classification.get("tracking_code")
             )
                 
-        # 6. Stream search — logistics already running in background
-        if "SEARCH" in intents:
-            for chunk in catalog_agent.run_stream(
-                customer_id=self.customer_id,
-                recipient=recipient,
-                search_query=classification.get("search_query") or user_message,
-                old_profile=old_profile,
-                new_profile=new_profile,
-                query_vector = query_vector
-            ):
-                full_response_chunks.append(chunk)
-                yield chunk
+        try:
+            # 6. Stream search — logistics already running in background
+            if "SEARCH" in intents:
+                for chunk in catalog_agent.run_stream(
+                    customer_id=self.customer_id,
+                    recipient=recipient,
+                    search_query=classification.get("search_query") or user_message,
+                    old_profile=old_profile,
+                    new_profile=new_profile,
+                    query_vector = query_vector
+                ):
+                    full_response_chunks.append(chunk)
+                    yield chunk
 
 
-        # 7. Logistics already done by now — yields instantly
-        if "LOGISTICS" in intents and logistics_future:
-            logistics_result = logistics_future.result()
-            yield "\n\n" + logistics_result
-            full_response_chunks.append("\n\n" + logistics_result)
+            # 7. Logistics already done by now — yields instantly
+            if "LOGISTICS" in intents and logistics_future:
+                logistics_result = logistics_future.result()
+                yield "\n\n" + logistics_result
+                full_response_chunks.append("\n\n" + logistics_result)
+        
+        finally:
+            if logistics_executor:
+                logistics_executor.shutdown(wait=False)
 
 
 
