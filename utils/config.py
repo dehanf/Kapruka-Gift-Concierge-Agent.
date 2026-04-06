@@ -10,10 +10,12 @@ with open(_CONFIG_PATH, "r") as f:
 # Claude
 CLAUDE_MODEL: str = _cfg["claude"]["model"]
 CLAUDE_MODEL_CLASSIFY: str = _cfg["claude"]["model_intent_classify"]
+CLAUDE_MODEL_LOGISTICS: str = _cfg["claude"]["model_logistics"]
 CLAUDE_MAX_TOKENS_CLASSIFY: int = _cfg["claude"]["max_tokens_classify"]
 CLAUDE_MAX_TOKENS_RESPOND: int  = _cfg["claude"]["max_tokens_respond"]
 CLAUDE_MAX_TOKENS_CRITIQUE: int = _cfg["claude"]["max_tokens_critique"]
 CLAUDE_MAX_TOKENS_LOGISTIC: int = _cfg["claude"]["max_tokens_logistics"]
+
 
 # Catalog agent
 MAX_REFLECTION_ROUNDS: int = _cfg["catalog_agent"]["max_reflection_rounds"]

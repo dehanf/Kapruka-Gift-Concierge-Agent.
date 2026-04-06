@@ -1,6 +1,7 @@
 claude:
   model: "anthropic/claude-sonnet-4-5"
   model_intent_classify: "anthropic/claude-haiku-4.5"
+  model_logistics : "anthropic/claude-haiku-4.5"
   max_tokens_classify: 512
   max_tokens_respond: 600
   max_tokens_critique: 150
