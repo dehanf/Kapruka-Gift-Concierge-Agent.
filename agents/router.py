@@ -183,7 +183,7 @@ class Router:
 
         # Initialize before if blocks
         all_recipients = set()
-        full_search_response = ""
+        full_response_chunks = []
 
         # 4. PREFERENCE_UPDATE — fire and forget
         if "PREFERENCE_UPDATE" in intents:
@@ -199,9 +199,28 @@ class Router:
                 t.daemon = True
                 t.start()
 
-        # 5. SEARCH — stream
+        """To make efficient the response we're using a strategy where
+        the logistic intent is fired then after that search intent is fired and streamed
+        after that logistic response is joined
+        
+"""     
+        #initializing them before in case executor gets failed
+        logistics_future = None   
+        logistics_executor = None      
+
+
+        # 5. Firing logistics in background
+        if "LOGISTICS" in intents:
+            logistics_executor = concurrent.futures.ThreadPoolExecutor()
+            logistics_future = logistics_executor.submit(
+                logistics_agent.run,
+                location=classification.get("location"),
+                deadline=classification.get("deadline"),
+                tracking_code=classification.get("tracking_code")
+            )
+                
+        # 6. Stream search — logistics already running in background
         if "SEARCH" in intents:
-            full_response_chunks = []
             for chunk in catalog_agent.run_stream(
                 customer_id=self.customer_id,
                 recipient=recipient,
@@ -212,19 +231,18 @@ class Router:
             ):
                 full_response_chunks.append(chunk)
                 yield chunk
-            full_search_response = "".join(full_response_chunks)
 
-        # 6. LOGISTICS — not streamed, yield full result
-        if "LOGISTICS" in intents:
-            result = logistics_agent.run(
-                location=classification.get("location"),
-                deadline=classification.get("deadline"),
-                tracking_code=classification.get("tracking_code")
-            )
-            yield result
-            full_search_response = result
 
-        # 7. Save to memory
+        # 7. Logistics already done by now — yields instantly
+        if "LOGISTICS" in intents and logistics_future:
+            logistics_result = logistics_future.result()
+            yield "\n\n" + logistics_result
+            full_response_chunks.append("\n\n" + logistics_result)
+
+
+
+        # 8. Save to memory
+        full_response = "".join(full_response_chunks)
         pref_msg = f"Got it — I'm updating preferences for {', '.join(all_recipients)}.\n\n" if "PREFERENCE_UPDATE" in intents else ""
         self.st_memory.add_message("user", user_message)
-        self.st_memory.add_message("assistant", pref_msg + full_search_response)
+        self.st_memory.add_message("assistant", pref_msg + full_response)

@@ -1,6 +1,6 @@
 # agents/logistics_agent.py
 
-from utils.config import CLAUDE_MODEL, CLAUDE_MAX_TOKENS_LOGISTIC
+from utils.config import CLAUDE_MODEL_LOGISTICS, CLAUDE_MAX_TOKENS_LOGISTIC
 from utils.prompts import LOGISTICS_SYSTEM_PROMPT
 from infrastructure.llm.client import chat
 
@@ -60,6 +60,9 @@ def run(location: str | None, deadline: str | None = None, tracking_code: str | 
     # Tracking flow — Playwright integration goes here
     if tracking_code:
         return f"[Tracking stub] Order {tracking_code} — Playwright lookup not yet implemented."
+        # Browser automation where it goes and get the tracking information 
+    
+
 
     if not location:
         return (
@@ -69,31 +72,30 @@ def run(location: str | None, deadline: str | None = None, tracking_code: str | 
 
     coverage = _lookup(location)
 
-    if coverage is None:
-        # Unknown location — let llm handle gracefully
-        context = (
-            f"Location requested: {location}\n"
-            f"Status: not found in our district database\n"
-            f"Deadline: {deadline or 'not specified'}"
-        )
-    elif coverage["covered"]:
+    # no LLM needed
+    if coverage is not None:
+        if not coverage["covered"]:
+            return (
+                f"Unfortunately, Kapruka doesn't currently deliver to {coverage['label']}. "
+                "You may want to consider a nearby district or contact Kapruka directly for alternatives."
+            )
         tier = coverage["tier"]
-        context = (
-            f"Location requested: {coverage['label']}\n"
-            f"Status: covered\n"
-            f"Delivery speed: {TIER_DESCRIPTION[tier]}\n"
-            f"Deadline: {deadline or 'not specified'}"
-        )
-    else:
-        context = (
-            f"Location requested: {coverage['label']}\n"
-            f"Status: not currently covered by Kapruka delivery\n"
-            f"Deadline: {deadline or 'not specified'}"
-        )
+        speed = TIER_DESCRIPTION[tier]
+        msg = f"Great news — Kapruka delivers to {coverage['label']} with {speed}."
+        if deadline:
+            msg += f" Your deadline is {deadline}, so that should work perfectly!"
+        return msg
+
+    # Case 1 — unknown location only, fall back to LLM
+    context = (
+        f"Location requested: {location}\n"
+        f"Status: not found in our district database\n"
+        f"Deadline: {deadline or 'not specified'}"
+    )
 
     return chat(
         system=LOGISTICS_SYSTEM_PROMPT,
         messages=[{"role": "user", "content": context}],
-        max_tokens=CLAUDE_MAX_TOKENS,
-        model=CLAUDE_MODEL,
+        max_tokens=CLAUDE_MAX_TOKENS_LOGISTIC,
+        model=CLAUDE_MODEL_LOGISTICS,
     )
