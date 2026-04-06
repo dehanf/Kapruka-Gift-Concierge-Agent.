@@ -3,7 +3,7 @@ claude:
   model_intent_classify: "anthropic/claude-haiku-4.5"
   max_tokens_classify: 512
   max_tokens_respond: 600
-  max_tokens_critique: 300
+  max_tokens_critique: 150
   max_tokens_logistics: 300
 
 catalog_agent:

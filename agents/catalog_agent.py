@@ -39,14 +39,14 @@ def _generate_stream(user_content: str):
     )
 
 
-def run(customer_id: str, recipient: str, search_query: str,old_profile: dict, new_profile: dict) -> str:
+def run(customer_id: str, recipient: str, search_query: str,old_profile: dict, new_profile: dict,query_vector : list = None) -> str:
 
     # 1. Use old profile directly - no get_profile() call needed
     profile = old_profile
     allergies = [a.lower() for a in profile.get("allergies",[])]
 
     # 2. Search the catalog
-    products = search_catalog(search_query, top_k=CATALOG_SEARCH_TOP_K)
+    products = search_catalog(search_query, top_k=CATALOG_SEARCH_TOP_K,query_vector=query_vector)
 
     if not products:
         return "Sorry ! Unfortunately i couldn't find anything matching right now. Could you try describing the gift differently?"
@@ -142,13 +142,13 @@ def run(customer_id: str, recipient: str, search_query: str,old_profile: dict, n
 
     return recommendation
 
-def run_stream(customer_id: str, recipient: str, search_query: str, old_profile: dict, new_profile: dict):
-
+def run_stream(customer_id: str, recipient: str, search_query: str, old_profile: dict, new_profile: dict,query_vector : list = None):
+    
     profile = old_profile
     allergies = [a.lower() for a in profile.get("allergies", [])]
 
     # Search catalog
-    products = search_catalog(search_query, top_k=CATALOG_SEARCH_TOP_K)
+    products = search_catalog(search_query, top_k=CATALOG_SEARCH_TOP_K,query_vector=query_vector)
     if not products:
         yield "Sorry! I couldn't find anything matching right now. Could you try describing the gift differently?"
         return

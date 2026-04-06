@@ -7,6 +7,11 @@ from agents import catalog_agent, logistics_agent
 from utils.config import CLAUDE_MODEL_CLASSIFY, CLAUDE_MAX_TOKENS_CLASSIFY
 from utils.prompts import ROUTER_SYSTEM_PROMPT
 from infrastructure.llm.client import chat
+from memory.lt_memory import precompute_embedding
+
+
+
+
 
 
 class Router:
@@ -57,8 +62,14 @@ class Router:
 
     def route(self, user_message: str) -> str:
 
-        # 1. Classify first
-        classification = self.classify_intents(user_message)
+        # 1. Classify and embedding parallely to enhance response time
+        with concurrent.futures.ThreadPoolExecutor() as ex:
+            classify_future = ex.submit(self.classify_intents,user_message)
+            encode_future = ex.submit(precompute_embedding,user_message)
+            classification = classify_future.result()
+            query_vector = encode_future.result()
+
+
         intents = classification.get("intents", ["SEARCH"])
 
         print(f"Customer        : {self.customer_id}")
@@ -108,7 +119,8 @@ class Router:
                 recipient=recipient,
                 search_query=classification.get("search_query") or user_message,
                 old_profile=old_profile,
-                new_profile=new_profile
+                new_profile=new_profile,
+                query_vector = query_vector
             )
 
         if "LOGISTICS" in intents:
@@ -138,8 +150,14 @@ class Router:
     def route_stream(self, user_message: str):
         """Streaming version of route() — yields chunks for SEARCH responses."""
 
-        # 1. Classify first
-        classification = self.classify_intents(user_message)
+        # 1. Classify and embedding parallely to enhance response time
+        with concurrent.futures.ThreadPoolExecutor() as ex:
+            classify_future = ex.submit(self.classify_intents,user_message)
+            encode_future = ex.submit(precompute_embedding,user_message)
+            classification = classify_future.result()
+            query_vector = encode_future.result()
+        
+
         intents = classification.get("intents", ["SEARCH"])
 
         print(f"Customer        : {self.customer_id}")
@@ -189,7 +207,8 @@ class Router:
                 recipient=recipient,
                 search_query=classification.get("search_query") or user_message,
                 old_profile=old_profile,
-                new_profile=new_profile
+                new_profile=new_profile,
+                query_vector = query_vector
             ):
                 full_response_chunks.append(chunk)
                 yield chunk

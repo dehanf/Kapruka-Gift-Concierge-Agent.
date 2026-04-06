@@ -27,18 +27,18 @@ from utils.config import LT_EMBEDDING_MODEL, LT_SEARCH_TOP_K
 encoder = SentenceTransformer(LT_EMBEDDING_MODEL)
 
 
-def cosine_similarity(vec1 : list , vec2 : list):
-    a = np.array(vec1)
-    b = np.array(vec2)
-
-    return float(np.dot(a,b) / (np.linalg.norm(a) * np.linalg.norm(b)) )
+def precompute_embedding(query: str) -> list:
+    """Encode query to vector — can be run in parallel with classifier."""
+    return encoder.encode(query).tolist()
 
 
+def search_catalog(query : str, top_k : int = LT_SEARCH_TOP_K,query_vector : list = None):
 
-def search_catalog(query : str, top_k : int = LT_SEARCH_TOP_K):
+    if query_vector is None:
+        query_vector = encoder.encode(query).tolist()
 
 
-    query_vector = encoder.encode(query).tolist()
+    #query_vector = encoder.encode(query).tolist()
 
     client = get_client()
 
@@ -50,6 +50,7 @@ def search_catalog(query : str, top_k : int = LT_SEARCH_TOP_K):
 
     products = [hit.payload for hit in results]
     return products
+
 
 
 def main():
