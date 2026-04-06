@@ -133,7 +133,8 @@ Rules:
 
 Examples:
 Location: Battaramulla → maps to Colombo → "Great news! Kapruka delivers to the Colombo district, which covers Battaramulla, with next-day delivery."
-Location: Peradeniya  → maps to Kandy   → "Peradeniya falls under the Kandy district, which Kapruka covers with 2–3 day delivery."
-Location: Narnia      → unknown         → "Unfortunately I wasn't able to find that location in our delivery zones. Please contact Kapruka support to confirm availability." """
+Location: Narnia      → unknown         → "Unfortunately I wasn't able to find that location in our delivery zones. Please contact Kapruka support to confirm availability." 
+
+"""
 
 #================================================================================================================
