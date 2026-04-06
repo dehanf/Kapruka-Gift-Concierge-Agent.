@@ -89,7 +89,6 @@ def run(location: str | None, deadline: str | None = None, tracking_code: str | 
     # Case 1 — unknown location only, fall back to LLM
     context = (
         f"Location requested: {location}\n"
-        f"Status: not found in our district database\n"
         f"Deadline: {deadline or 'not specified'}"
     )
 
