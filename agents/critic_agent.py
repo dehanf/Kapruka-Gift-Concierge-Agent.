@@ -10,7 +10,7 @@ def critique(
     recommendation: str,
     search_query: str,
     profile: dict,
-    recipient: str,
+    recipients: set,
     products: list
 ) -> dict:
 
@@ -24,18 +24,18 @@ def critique(
     preferences = profile.get("preferences", [])
     location = profile.get("location", "unknown")
 
-    context = f"""Recipient: {recipient or 'unknown'}
-Allergies: {', '.join(allergies) if allergies else 'none'}
-Preferences: {', '.join(preferences) if preferences else 'none'}
-Location: {location}
+    context = f"""Recipients: { recipients or 'unknown'}
+    Allergies: {', '.join(allergies) if allergies else 'none'}
+    Preferences: {', '.join(preferences) if preferences else 'none'}
+    Location: {location}
 
-Search query: {search_query}
+    Search query: {search_query}
 
-Available products:
-{product_lines}
+    Available products:
+    {product_lines}
 
-Recommendation to review:
-{recommendation}"""
+    Recommendation to review:
+    {recommendation}"""
 
     raw = chat(
         system=CRITIC_SYSTEM_PROMPT,

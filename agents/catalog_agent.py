@@ -39,10 +39,10 @@ def _generate_stream(user_content: str):
     )
 
 
-def run_stream(customer_id: str, recipient: str, search_query: str, old_profile: dict, new_profile: dict,query_vector : list = None):
+def run_stream(customer_id: str, recipients: set, search_query: str, old_profile: dict, new_profile: dict,query_vector : list = None):
 
-    profile = old_profile
-    allergies = [a.lower() for a in profile.get("allergies", [])]
+
+    allergies = [a.lower() for a in old_profile.get("allergies", [])]
 
     # Search catalog
     products = search_catalog(search_query, top_k=CATALOG_SEARCH_TOP_K,query_vector=query_vector)
@@ -50,43 +50,17 @@ def run_stream(customer_id: str, recipient: str, search_query: str, old_profile:
         yield "Sorry! I couldn't find anything matching right now. Could you try describing the gift differently?"
         return
 
-    # Filter allergens
-    if allergies:
-        def is_safe(product: dict) -> bool:
-            searchable = " ".join([
-                product.get("name", ""),
-                product.get("description", ""),
-                product.get("specs", "")
-            ]).lower()
-            return not any(allergen in searchable for allergen in allergies)
-
-        safe_products = [p for p in products if is_safe(p)]
-        if not safe_products:
-            yield (
-                f"I found some results but all of them may contain {', '.join(allergies)}, "
-                f"which {recipient or 'the recipient'} is allergic to. "
-                "Could you try a different type of gift?"
-            )
-            return
-        products = safe_products
-
-    products = products[:CATALOG_MAX_PRODUCTS]
-
-    # Build context
-    profile_summary = ""
-    if profile:
-        profile_summary = (
-            f"Recipient: {recipient}\n"
-            f"Allergies: {', '.join(allergies) if allergies else 'none'}\n"
-            f"Preferences: {', '.join(profile.get('preferences', [])) or 'none'}\n"
-            f"Location: {profile.get('location', 'unknown')}\n"
-        )
 
     product_lines = [
         f"- {p.get('name', 'Unknown')} | Price: {p.get('price', 'N/A')} "
         f"| Category: {p.get('category', 'N/A')} | Stock: {p.get('availability', 'Unknown')}"
         for p in products
     ]
+    allergies = list(set(old_profile.get("allergies", []) + new_profile.get("allergies", [])))
+    preferences = list(set(old_profile.get("preferences", []) + new_profile.get("preferences", [])))
+    location = old_profile.get("location") or new_profile.get("location") or ""
+
+    profile_summary = {"allergies": allergies, "preferences": preferences, "location": location}
 
     user_content = (
         f"{profile_summary}\n"
@@ -98,58 +72,65 @@ def run_stream(customer_id: str, recipient: str, search_query: str, old_profile:
     draft_chunks = []
     for chunk in _generate_stream(user_content):
         draft_chunks.append(chunk)
-        yield chunk
 
     draft = "".join(draft_chunks)
     print(f"\n[Catalog] Draft streamed.")
 
     # 2. Check if critic needed
-    merged_profile = {
-        "allergies": list(set(
-            [a.lower() for a in old_profile.get("allergies", [])] +
-            [a.lower() for a in new_profile.get("allergies", [])]
-        )),
-        "preferences": list(set(
-            old_profile.get("preferences", []) +
-            new_profile.get("preferences", [])
-        )),
-        "location": new_profile.get("location") or old_profile.get("location", "unknown")
-    }
 
-    skip_critic = not merged_profile.get("allergies") and not merged_profile.get("preferences")
+    skip_critic = not profile_summary.get("allergies") and not profile_summary.get("preferences")
     if skip_critic:
         print("[Critic] Skipped — no constraints.")
+        yield draft
         return
+    
 
     # 3. Run critic on full draft
     critique = critic_agent.critique(
         recommendation=draft,
         search_query=search_query,
-        profile=merged_profile,
-        recipient=recipient or "",
+        profile=profile_summary,
+        recipients=recipients or "",
         products=products
     )
 
     if critique.get("approved"):
         print("[Critic] Approved.")
+        yield draft 
         return
 
-    # 4. Critic rejected — stream the revision
-    issues = critique.get("issues", [])
-    suggestion = critique.get("suggestion")
-    print(f"[Critic] Issues found: {issues} — streaming revision.")
+    rounds = 0
+    revised = draft
+    while critique.get("rejected") and rounds < MAX_REFLECTION_ROUNDS:
+        issues = critique.get("issues", [])
+        suggestion = critique.get("suggestion", "")
 
-    yield "\n\n---\n⚠️ *Let me revise that recommendation:*\n\n"
+        content = (
+            f"Original recommendation:\n{revised}\n\n"
+            f"Issues found:\n" + "\n".join(f"- {i}" for i in issues) +
+            f"\n\nSuggested fix:\n{suggestion or 'Address the issues above.'}"
+        )
 
-    # Stream revision directly from LLM
-    content = (
-        f"Original recommendation:\n{draft}\n\n"
-        f"Issues found:\n" + "\n".join(f"- {i}" for i in issues) +
-        f"\n\nSuggested fix:\n{suggestion or 'Address the issues above.'}"
-    )
-    yield from chat_stream(
-        system=REVISE_SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": content}],
-        max_tokens=CLAUDE_MAX_TOKENS_RESPOND,
-        model=CLAUDE_MODEL,
-    )
+        # Collect silently — no yielding yet
+        revised_chunks = []
+        for chunk in chat_stream(
+            system=REVISE_SYSTEM_PROMPT,
+            messages=[{"role": "user", "content": content}],
+            max_tokens=CLAUDE_MAX_TOKENS_RESPOND,
+            model=CLAUDE_MODEL,
+        ):
+            revised_chunks.append(chunk)
+
+        revised = "".join(revised_chunks)
+
+        critique = critic_agent.critique(
+            recommendation=revised,
+            search_query=search_query,
+            profile=profile_summary,
+            recipients=recipients or "",
+            products=products
+        )
+        rounds += 1
+
+    # Stream the final version once — whether approved or max rounds hit
+    yield revised

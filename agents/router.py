@@ -8,6 +8,7 @@ from utils.config import CLAUDE_MODEL_CLASSIFY, CLAUDE_MAX_TOKENS_CLASSIFY
 from utils.prompts import ROUTER_SYSTEM_PROMPT
 from infrastructure.llm.client import chat
 from memory.lt_memory import precompute_embedding
+import time
 
 
 
@@ -64,11 +65,17 @@ class Router:
         """Streaming version of route() — yields chunks for SEARCH responses."""
 
         # 1. Classify and embedding parallely to enhance response time
+        start = time.time()
         with concurrent.futures.ThreadPoolExecutor() as ex:
+
+            print('classifying thread pool starts...')
             classify_future = ex.submit(self.classify_intents,user_message)
             encode_future = ex.submit(precompute_embedding,user_message)
             classification = classify_future.result()
             query_vector = encode_future.result()
+        end = time.time()
+
+        print(f'classifying thread pool ends... : {end-start}s')
         
 
         intents = classification.get("intents", ["SEARCH"])
@@ -77,22 +84,54 @@ class Router:
         print(f"Router Decision : {intents}")
         print(f"Extracted       : {json.dumps(classification, indent=2)}")
 
-        # 2. Load old profile
-        recipient = classification.get("search_recipient")
-        if isinstance(recipient, list):
-            recipient = recipient[0] if recipient else None
-
-        old_profile = get_profile(self.customer_id, recipient) if recipient else {}
-
-        # 3. Build new profile
+        # 2. allergies_dict and preferences_dict still needed for PREFERENCE_UPDATE
         allergies_dict = classification.get("allergies") or {}
         preferences_dict = classification.get("preferences") or {}
 
-        new_profile = {
-            "allergies": allergies_dict.get(recipient, []) if recipient else [],
-            "preferences": preferences_dict.get(recipient, []) if recipient else [],
-            "location": classification.get("location") or ""
-        }
+        # 3. Load old profile
+        recipient = classification.get("search_recipient")
+        if isinstance(recipient, list) and len(recipient) > 1:
+            # Multiple recipients — merge all profiles
+            merged_allergies = []
+            merged_preferences = []
+            merged_location = ""
+            merged_new_allergies = []
+            merged_new_preferences = []
+
+            for name in recipient:
+                # old profile
+                p = get_profile(self.customer_id, name) or {}
+                merged_allergies += p.get("allergies", [])
+                merged_preferences += p.get("preferences", [])
+                merged_location = merged_location or p.get("location", "")
+                # new profile
+                merged_new_allergies += allergies_dict.get(name, [])
+                merged_new_preferences += preferences_dict.get(name, [])
+
+            old_profile = {
+                "allergies": list(set(merged_allergies)),
+                "preferences": list(set(merged_preferences)),
+                "location": merged_location
+            }
+            new_profile = {
+                "allergies": list(set(merged_new_allergies)),   # ✅ all recipients
+                "preferences": list(set(merged_new_preferences)), # ✅ all recipients
+                "location": classification.get("location") or ""
+            }
+            recipient = ", ".join(recipient)  # "daughter, wife, son" for display
+
+        else:
+            # Single recipient
+            if isinstance(recipient, list):
+                recipient = recipient[0] if recipient else None
+            old_profile = get_profile(self.customer_id, recipient) if recipient else {}
+
+            #merge old and new 
+            new_profile = {
+                "allergies": allergies_dict.get(recipient, []) if recipient else [],
+                "preferences": preferences_dict.get(recipient, []) if recipient else [],
+                "location": classification.get("location") or ""
+            }
 
         # Initialize before if blocks
         all_recipients = set()
@@ -101,6 +140,7 @@ class Router:
         # 4. PREFERENCE_UPDATE — fire and forget
         if "PREFERENCE_UPDATE" in intents:
             all_recipients = set(list(allergies_dict.keys()) + list(preferences_dict.keys()))
+            print('preference update thread starts...')
             for name in all_recipients:
                 t = threading.Thread(target=add_or_update_profile, kwargs={
                     "customer_id": self.customer_id,
@@ -125,6 +165,8 @@ class Router:
         # 5. Firing logistics in background
         if "LOGISTICS" in intents:
             logistics_executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+            print('logistic intent thread fired...')
+
             logistics_future = logistics_executor.submit(
                 logistics_agent.run,
                 location=classification.get("location"),
@@ -137,7 +179,7 @@ class Router:
             if "SEARCH" in intents:
                 for chunk in catalog_agent.run_stream(
                     customer_id=self.customer_id,
-                    recipient=recipient,
+                    recipients=all_recipients,
                     search_query=classification.get("search_query") or user_message,
                     old_profile=old_profile,
                     new_profile=new_profile,
@@ -156,6 +198,7 @@ class Router:
         finally:
             if logistics_executor:
                 logistics_executor.shutdown(wait=False)
+                print('logistics_executor shut down.')
 
 
 

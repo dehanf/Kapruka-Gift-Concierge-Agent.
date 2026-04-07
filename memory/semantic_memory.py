@@ -60,6 +60,7 @@ class SemanticMemory:
             self.profiles[customer_id][name]["location"] = location
         
         self.save()
+        print('preference update thread ends...')
         print(f"Profile updated: {name}")
 
     def get_profile(self,customer_id:str, name: str) -> dict:
