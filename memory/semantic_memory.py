@@ -39,27 +39,27 @@ class SemanticMemory:
         if customer_id not in self.profiles:
             self.profiles[customer_id] = {"allergies": {},
                 "preferences": {},
-                "location": ""
+                "location": {}
                 }
         name = name.lower() 
         
         
         if allergies:
             if name not in self.profiles[customer_id]["allergies"]:
-                self.profiles[customer_id]["allergies"] = {name : []}
+                self.profiles[customer_id]["allergies"][name] = []
 
             self.profiles[customer_id]["allergies"][name] = list(
                 set(self.profiles[customer_id]["allergies"][name] + allergies)
             )
         if preferences:
             if name not in self.profiles[customer_id]["preferences"]:
-                self.profiles[customer_id]["preferences"] = {name : []}
+                self.profiles[customer_id]["preferences"][name] = []
             self.profiles[customer_id]["preferences"][name] = list(
                 set(self.profiles[customer_id]["preferences"][name]  + preferences)
             )
         if location:
             if name not in self.profiles[customer_id]["location"]:
-                self.profiles[customer_id]["location"] = ""
+                self.profiles[customer_id]["location"][name] = ""
             self.profiles[customer_id]["location"][name] = location
         
         self.save()
@@ -73,7 +73,7 @@ class SemanticMemory:
         return {
             "allergies": customer.get("allergies", {}).get(name, []),
             "preferences": customer.get("preferences", {}).get(name, []),
-            "location": customer.get("location", "")
+            "location": customer.get("location", {}).get(name, "")
         }
 
 
