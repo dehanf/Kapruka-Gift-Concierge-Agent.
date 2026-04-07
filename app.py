@@ -513,8 +513,10 @@ with st.sidebar:
         sm = SemanticMemory()
         cid = st.session_state.customer_id
         customer = sm.profiles.get(cid, {})
-        all_names = set(customer.get("allergies", {}).keys()) | set(customer.get("preferences", {}).keys())
-
+        all_names = set()
+        for key, val in customer.items():
+            if isinstance(val, dict):
+                all_names.update(val.keys())
         if all_names:
             for recipient in all_names:
                 allergies = customer.get("allergies", {}).get(recipient, [])
