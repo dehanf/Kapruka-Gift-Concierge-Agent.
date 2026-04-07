@@ -39,7 +39,7 @@ def _generate_stream(user_content: str):
     )
 
 
-def run_stream(customer_id: str, recipients: set, search_query: str, old_profile: dict, new_profile: dict,query_vector : list = None):
+def run_stream(recipients: set, search_query: str, old_profile: dict, new_profile: dict,query_vector : list = None):
 
 
     allergies = [a.lower() for a in old_profile.get("allergies", [])]
@@ -72,6 +72,7 @@ def run_stream(customer_id: str, recipients: set, search_query: str, old_profile
     draft_chunks = []
     for chunk in _generate_stream(user_content):
         draft_chunks.append(chunk)
+        yield chunk
 
     draft = "".join(draft_chunks)
     print(f"\n[Catalog] Draft streamed.")
@@ -81,9 +82,7 @@ def run_stream(customer_id: str, recipients: set, search_query: str, old_profile
     skip_critic = not profile_summary.get("allergies") and not profile_summary.get("preferences")
     if skip_critic:
         print("[Critic] Skipped — no constraints.")
-        yield draft
         return
-    
 
     # 3. Run critic on full draft
     critique = critic_agent.critique(
@@ -94,14 +93,15 @@ def run_stream(customer_id: str, recipients: set, search_query: str, old_profile
         products=products
     )
 
-    if critique.get("approved"):
-        print("[Critic] Approved.")
-        yield draft 
+    if critique.get("approved") == True:
+        print("Critic Approved.")
         return
 
+
+    #reflection pattern
     rounds = 0
     revised = draft
-    while critique.get("rejected") and rounds < MAX_REFLECTION_ROUNDS:
+    while((critique.get("approved") == False) and (rounds < MAX_REFLECTION_ROUNDS)):
         issues = critique.get("issues", [])
         suggestion = critique.get("suggestion", "")
 
@@ -120,6 +120,7 @@ def run_stream(customer_id: str, recipients: set, search_query: str, old_profile
             model=CLAUDE_MODEL,
         ):
             revised_chunks.append(chunk)
+            yield chunk
 
         revised = "".join(revised_chunks)
 
@@ -131,6 +132,3 @@ def run_stream(customer_id: str, recipients: set, search_query: str, old_profile
             products=products
         )
         rounds += 1
-
-    # Stream the final version once — whether approved or max rounds hit
-    yield revised
