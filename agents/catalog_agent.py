@@ -42,8 +42,6 @@ def _generate_stream(user_content: str):
 def run_stream(recipients: set, search_query: str, old_profile: dict, new_profile: dict,query_vector : list = None):
 
 
-    allergies = [a.lower() for a in old_profile.get("allergies", [])]
-
     # Search catalog
     products = search_catalog(search_query, top_k=CATALOG_SEARCH_TOP_K,query_vector=query_vector)
     if not products:
@@ -56,9 +54,16 @@ def run_stream(recipients: set, search_query: str, old_profile: dict, new_profil
         f"| Category: {p.get('category', 'N/A')} | Stock: {p.get('availability', 'Unknown')}"
         for p in products
     ]
-    allergies = list(set(old_profile.get("allergies", []) + new_profile.get("allergies", [])))
-    preferences = list(set(old_profile.get("preferences", []) + new_profile.get("preferences", [])))
-    location = old_profile.get("location") or new_profile.get("location") or ""
+
+    allergies = {}
+    preferences = {}
+    location = {}
+    for res in recipients:
+        allergies[res] = set(old_profile["allergies"][res] + new_profile["allergies"][res])
+        preferences[res] = set(old_profile["preferences"][res] + new_profile["preferences"][res])
+        location[res] = old_profile.get("location", {}).get(res, "") or new_profile.get("location", {}).get(res, "") or ""
+
+
 
     profile_summary = {"allergies": allergies, "preferences": preferences, "location": location}
 
@@ -78,7 +83,6 @@ def run_stream(recipients: set, search_query: str, old_profile: dict, new_profil
     print(f"\n[Catalog] Draft streamed.")
 
     # 2. Check if critic needed
-
     skip_critic = not profile_summary.get("allergies") and not profile_summary.get("preferences")
     if skip_critic:
         print("[Critic] Skipped — no constraints.")
@@ -110,6 +114,8 @@ def run_stream(recipients: set, search_query: str, old_profile: dict, new_profil
             f"Issues found:\n" + "\n".join(f"- {i}" for i in issues) +
             f"\n\nSuggested fix:\n{suggestion or 'Address the issues above.'}"
         )
+
+        yield "<<CLEAR>>"  #wipes the draft from the ui
 
         # Collect silently — no yielding yet
         revised_chunks = []

@@ -89,32 +89,31 @@ class Router:
         recipient = classification.get("search_recipient")
         if isinstance(recipient, list) and len(recipient) > 1:
             # Multiple recipients — merge all profiles
-            merged_allergies = []
-            merged_preferences = []
-            merged_location = ""
-            merged_new_allergies = []
-            merged_new_preferences = []
+            old_profile = {
+                "allergies": {},
+                "preferences": {},
+                "location": {}
+            }
+
+            new_profile = {
+                "allergies": {},
+                "preferences": {},
+                "location": {}
+                }
 
             for name in recipient:
                 # old profile
                 p = get_profile(self.customer_id, name) or {}
-                merged_allergies += p.get("allergies", [])
-                merged_preferences += p.get("preferences", [])
-                merged_location = merged_location or p.get("location", "")
-                # new profile
-                merged_new_allergies += allergies_dict.get(name, [])
-                merged_new_preferences += preferences_dict.get(name, [])
+                old_profile['allergies'][name] = p.get("allergies",[])
+                old_profile['preferences'][name] = p.get("preferences",[])
+                old_profile['location'][name] = p.get("location", "")
 
-            old_profile = {
-                "allergies": list(set(merged_allergies)),
-                "preferences": list(set(merged_preferences)),
-                "location": merged_location
-            }
-            new_profile = {
-                "allergies": list(set(merged_new_allergies)), 
-                "preferences": list(set(merged_new_preferences)), 
-                "location": classification.get("location") or ""
-            }
+                # new profile
+                new_profile['allergies'][name] = allergies_dict.get(name,[])
+                new_profile['preferences'][name] = preferences_dict.get(name,[])
+                new_profile['location'][name] = ""
+            
+
             recipient = ", ".join(recipient)  # "daughter, wife, son" 
 
         else:
@@ -123,12 +122,9 @@ class Router:
                 recipient = recipient[0] if recipient else None
             old_profile = get_profile(self.customer_id, recipient) if recipient else {}
 
-            #merge old and new 
-            new_profile = {
-                "allergies": allergies_dict.get(recipient, []) if recipient else [],
-                "preferences": preferences_dict.get(recipient, []) if recipient else [],
-                "location": classification.get("location") or ""
-            }
+        
+        print("old profile is" ,old_profile)
+        print("new profile is",new_profile)
 
         # Initialize before if blocks
         all_recipients = set()
@@ -181,8 +177,9 @@ class Router:
                     new_profile=new_profile,
                     query_vector = query_vector
                 ):
-                    full_response_chunks.append(chunk)
-                    yield chunk
+                    if chunk != "<<CLEAR>>":
+                        full_response_chunks.append(chunk)
+                    yield chunk 
 
 
             # 7. Logistics already done by now — yields instantly
