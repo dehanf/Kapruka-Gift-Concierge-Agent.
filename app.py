@@ -512,13 +512,14 @@ with st.sidebar:
         st.markdown('<p style="font-size:0.7rem;color:#4a5568;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:10px;">Recipient Profiles</p>', unsafe_allow_html=True)
         sm = SemanticMemory()
         cid = st.session_state.customer_id
-        profiles = sm.profiles.get(cid, {})
+        customer = sm.profiles.get(cid, {})
+        all_names = set(customer.get("allergies", {}).keys()) | set(customer.get("preferences", {}).keys())
 
-        if profiles:
-            for recipient, data in profiles.items():
-                allergies = data.get("allergies", [])
-                prefs     = data.get("preferences", [])
-                loc       = data.get("location", "")
+        if all_names:
+            for recipient in all_names:
+                allergies = customer.get("allergies", {}).get(recipient, [])
+                prefs     = customer.get("preferences", {}).get(recipient, [])
+                loc       = customer.get("location", "")
 
                 allergy_tags = "".join(f'<span class="profile-tag allergy">⚠ {a}</span>' for a in allergies)
                 pref_tags    = "".join(f'<span class="profile-tag pref">✦ {p}</span>'    for p in prefs)
@@ -617,7 +618,23 @@ if user_input:
 
         router.classify_intents = _capturing_classify
         t0 = time.time()
-        response = st.write_stream(router.route_stream(user_input))
+        
+        # response streaming and rolling back
+        message_placeholder = st.empty()
+        full_text = ""
+
+        for chunk in router.route_stream(user_input):
+            if chunk == "<<CLEAR>>":
+                full_text = ""
+                message_placeholder.markdown("🔍 *Refining recommendation based on your profile...*")
+                continue
+            full_text += chunk
+            message_placeholder.markdown(full_text + "▌")
+
+        message_placeholder.markdown(full_text)
+        response = full_text
+
+
         elapsed = time.time() - t0
         router.classify_intents = original_classify
 
