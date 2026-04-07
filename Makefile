@@ -85,7 +85,7 @@ start:
 	$(PYTHON) main.py
 
 ui:
-	streamlit run app.py
+	PYTHONPATH=. streamlit run app.py --server.fileWatcherType none
 
 # ── Housekeeping ──────────────────────────────────────────────────────────────
 
