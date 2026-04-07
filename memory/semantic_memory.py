@@ -37,43 +37,45 @@ class SemanticMemory:
     def add_or_update_profile(self, customer_id: str, name: str, allergies: list = [], preferences: list = [], location: str = ""):
         
         if customer_id not in self.profiles:
-            self.profiles[customer_id] = {}
+            self.profiles[customer_id] = {"allergies": {},
+                "preferences": {},
+                "location": ""
+                }
         name = name.lower() 
         
-        if name not in self.profiles[customer_id]:
-            self.profiles[customer_id][name] = {
-                "allergies": [],
-                "preferences": [],
-                "location": ""
-            }
         
-
         if allergies:
-            self.profiles[customer_id][name]["allergies"] = list(
-                set(self.profiles[customer_id][name]["allergies"] + allergies)
+            if name not in self.profiles[customer_id]["allergies"]:
+                self.profiles[customer_id]["allergies"] = {name : []}
+
+            self.profiles[customer_id]["allergies"][name] = list(
+                set(self.profiles[customer_id]["allergies"][name] + allergies)
             )
         if preferences:
-            self.profiles[customer_id][name]["preferences"] = list(
-                set(self.profiles[customer_id][name]["preferences"] + preferences)
+            if name not in self.profiles[customer_id]["preferences"]:
+                self.profiles[customer_id]["preferences"] = {name : []}
+            self.profiles[customer_id]["preferences"][name] = list(
+                set(self.profiles[customer_id]["preferences"][name]  + preferences)
             )
         if location:
-            self.profiles[customer_id][name]["location"] = location
+            if name not in self.profiles[customer_id]["location"]:
+                self.profiles[customer_id]["location"] = ""
+            self.profiles[customer_id]["location"][name] = location
         
         self.save()
         print('preference update thread ends...')
         print(f"Profile updated: {name}")
 
-    def get_profile(self,customer_id:str, name: str) -> dict:
+    def get_profile(self, customer_id: str, name: str) -> dict:
         name = name.lower()
-        if customer_id in self.profiles:
-            if name in self.profiles[customer_id]:
-                return self.profiles[customer_id][name]
-            else:
-                print(f"No profile found for: {name}")
+        customer = self.profiles.get(customer_id, {})
+        
+        return {
+            "allergies": customer.get("allergies", {}).get(name, []),
+            "preferences": customer.get("preferences", {}).get(name, []),
+            "location": customer.get("location", "")
+        }
 
-        else:
-            print(f"No customer found for: {customer_id}")
-            return {}
 
 
 # Module-level singleton used by router.py
