@@ -28,6 +28,7 @@ def critique(
     Allergies: {', '.join(allergies) if allergies else 'none'}
     Preferences: {', '.join(preferences) if preferences else 'none'}
     Location: {location}
+    
 
     Search query: {search_query}
 

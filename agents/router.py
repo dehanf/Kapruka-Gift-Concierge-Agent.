@@ -12,9 +12,6 @@ import time
 
 
 
-
-
-
 class Router:
     def __init__(self, customer_id: str):
         self.customer_id = customer_id
@@ -114,11 +111,11 @@ class Router:
                 "location": merged_location
             }
             new_profile = {
-                "allergies": list(set(merged_new_allergies)),   # ✅ all recipients
-                "preferences": list(set(merged_new_preferences)), # ✅ all recipients
+                "allergies": list(set(merged_new_allergies)), 
+                "preferences": list(set(merged_new_preferences)), 
                 "location": classification.get("location") or ""
             }
-            recipient = ", ".join(recipient)  # "daughter, wife, son" for display
+            recipient = ", ".join(recipient)  # "daughter, wife, son" 
 
         else:
             # Single recipient
@@ -178,7 +175,6 @@ class Router:
             # 6. Stream search — logistics already running in background
             if "SEARCH" in intents:
                 for chunk in catalog_agent.run_stream(
-                    customer_id=self.customer_id,
                     recipients=all_recipients,
                     search_query=classification.get("search_query") or user_message,
                     old_profile=old_profile,
