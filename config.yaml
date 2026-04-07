@@ -8,7 +8,7 @@ claude:
   max_tokens_logistics: 300
 
 catalog_agent:
-  max_reflection_rounds: 1
+  max_reflection_rounds: 3
   search_top_k: 8
   max_products_after_filter: 10
 
