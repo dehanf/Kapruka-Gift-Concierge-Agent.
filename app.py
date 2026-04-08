@@ -623,13 +623,31 @@ if user_input:
         
         # response streaming and rolling back
         message_placeholder = st.empty()
+        status_placeholder = st.empty()
         full_text = ""
+        content_started = False 
 
         for chunk in router.route_stream(user_input):
-            if chunk == "<<CLEAR>>":
+            
+            if chunk == "<<PREF_SAVING>>":
+              status_placeholder.markdown("🧠 *Remembering preferences...*")
+              continue
+            
+            if chunk == "<<CRITIC>>" : #wipes the draft from the ui
                 full_text = ""
-                message_placeholder.markdown("🔍 *Refining recommendation based on your profile...*")
+                status_placeholder.markdown("🔍 *Refining recommendation based on your profile...*")
                 continue
+            
+            if chunk == "<<LOGISTICS>>":
+                status_placeholder.markdown("🧠 *Checking delivery feasibility..*")
+                continue
+                
+                
+            
+                # First real content chunk — clear the indicator
+            if not content_started:         
+              status_placeholder.empty()   
+              content_started = True       
             full_text += chunk
             message_placeholder.markdown(full_text + "▌")
 
