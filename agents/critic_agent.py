@@ -4,6 +4,12 @@ import json
 from utils.config import CLAUDE_MODEL, CLAUDE_MAX_TOKENS_CRITIQUE
 from utils.prompts import CRITIC_SYSTEM_PROMPT
 from infrastructure.llm.client import chat
+from pydantic import BaseModel
+
+class CriticOutput(BaseModel): # pydantic model fro validation 
+    approved : bool
+    issues : list
+    suggestion : str | None
 
 
 def critique(
@@ -43,9 +49,19 @@ def critique(
         messages=[{"role": "user", "content": context}],
         max_tokens=CLAUDE_MAX_TOKENS_CRITIQUE,
         model=CLAUDE_MODEL,
+        json_mode=True,
+
     )
+    clean = raw.strip()
+    start = clean.find("{")
+    end = clean.rfind("}") + 1
+    if start != -1 and end > start:
+        clean = clean[start:end]
 
     try:
-        return json.loads(raw)
+        result = json.loads(clean)
+        validated = CriticOutput(**result)
+        return validated.model_dump()
+
     except json.JSONDecodeError:
-        return {"approved": True, "issues": [], "suggestion": None}
+        return {"approved": False, "issues": ["Critic returned unparseable response — rejecting as precaution"], "suggestion": None}

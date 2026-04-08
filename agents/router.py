@@ -9,7 +9,19 @@ from utils.prompts import ROUTER_SYSTEM_PROMPT
 from infrastructure.llm.client import chat
 from memory.lt_memory import precompute_embedding
 import time
+from pydantic import BaseModel
+from typing import Literal
 
+
+class RouterOutput(BaseModel):
+    intents: list[Literal["SEARCH", "LOGISTICS", "PREFERENCE_UPDATE"]]
+    allergies: dict
+    preferences: dict
+    search_recipient: str | list | None
+    location: str | None
+    deadline: str | None
+    search_query: str | None
+    tracking_code: str | None
 
 
 class Router:
@@ -27,17 +39,21 @@ class Router:
             messages=messages,
             max_tokens=CLAUDE_MAX_TOKENS_CLASSIFY,
             model=CLAUDE_MODEL_CLASSIFY,
+            json_mode=True,
+
         )
 
+        #structured output extraction - json format
         clean = raw.strip()
-        if clean.startswith("```"):
-            clean = clean.split("```")[1]
-            if clean.startswith("json"):
-                clean = clean[4:]
-            clean = clean.strip()
+        start = clean.find("{")
+        end = clean.rfind("}") + 1
+        if start != -1 and end > start:
+            clean = clean[start:end]
 
         try:
             result = json.loads(clean)
+            validated = RouterOutput(**result) #pydantic validation 
+            result = validated.model_dump()
             if isinstance(result.get("intents"), str):
                 result["intents"] = [result["intents"]]
             if not isinstance(result.get("allergies"), dict):
@@ -46,7 +62,7 @@ class Router:
                 result["preferences"] = {}
             return result
 
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, ValueError): #value errors for pydantic errors
             return {
                 "intents": ["SEARCH"],
                 "allergies": {},
