@@ -101,14 +101,14 @@ Respond ONLY with valid JSON. No markdown, no preamble, no explanation outside t
 
 If all rules pass:
 {
-  "approved": True,
+  "approved": true,
   "issues": [],
   "suggestion": null
 }
 
 If ANY rule fails:
 {
-  "approved": False,
+  "approved": false,
   "issues": [
     "Recommends 'Cashew Delight Box' despite cashew allergy",
     "States price as Rs. 1800 but product list shows Rs. 1950",
