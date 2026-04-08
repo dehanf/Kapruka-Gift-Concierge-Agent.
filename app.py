@@ -521,7 +521,7 @@ with st.sidebar:
             for recipient in all_names:
                 allergies = customer.get("allergies", {}).get(recipient, [])
                 prefs     = customer.get("preferences", {}).get(recipient, [])
-                loc       = customer.get("location", "")
+                loc       = customer.get("location", {}).get(recipient) 
 
                 allergy_tags = "".join(f'<span class="profile-tag allergy">⚠ {a}</span>' for a in allergies)
                 pref_tags    = "".join(f'<span class="profile-tag pref">✦ {p}</span>'    for p in prefs)
