@@ -6,3 +6,4 @@ numpy
 pyyaml
 python-dotenv
 streamlit
+pydantic
