@@ -59,9 +59,9 @@ def run_stream(recipients: set, search_query: str, old_profile: dict, new_profil
     preferences = {}
     location = {}
     for res in recipients:
-        allergies[res] = set(old_profile["allergies"][res] + new_profile["allergies"][res])
-        preferences[res] = set(old_profile["preferences"][res] + new_profile["preferences"][res])
-        location[res] = old_profile.get("location", {}).get(res, "") or new_profile.get("location", {}).get(res, "") or ""
+        allergies[res]   = set((old_profile["allergies"].get(res, []) or []) + (new_profile["allergies"].get(res, []) or []))
+        preferences[res] = set((old_profile["preferences"].get(res, []) or []) + (new_profile["preferences"].get(res, []) or []))
+        location[res]    = old_profile.get("location", {}).get(res, "") or new_profile.get("location", {}).get(res, "")
 
 
 
@@ -105,6 +105,8 @@ def run_stream(recipients: set, search_query: str, old_profile: dict, new_profil
     #reflection pattern
     rounds = 0
     revised = draft
+    
+
     while((critique.get("approved") == False) and (rounds < MAX_REFLECTION_ROUNDS)):
         issues = critique.get("issues", [])
         suggestion = critique.get("suggestion", "")
@@ -115,7 +117,7 @@ def run_stream(recipients: set, search_query: str, old_profile: dict, new_profil
             f"\n\nSuggested fix:\n{suggestion or 'Address the issues above.'}"
         )
 
-        yield "<<CLEAR>>"  #wipes the draft from the ui
+        yield "<<CRITIC>>"  #wipes the draft from the ui
 
         # Collect silently — no yielding yet
         revised_chunks = []

@@ -72,7 +72,7 @@ class Router:
             query_vector = encode_future.result()
         end = time.time()
 
-        print(f'classifying thread pool ends... : {end-start}s')
+        print(f'classifying thread pool ends... : {end-start}s') 
         
 
         intents = classification.get("intents", ["SEARCH"])
@@ -152,6 +152,7 @@ class Router:
                 })
                 t.daemon = True
                 t.start()
+                yield "<<PREF_SAVING>>"
 
         """To make efficient the response we're using a strategy where
         the logistic intent is fired then after that search intent is fired and streamed
@@ -174,6 +175,7 @@ class Router:
                 deadline=classification.get("deadline"),
                 tracking_code=classification.get("tracking_code")
             )
+            yield "<<LOGISTICS>>"
                 
         try:
             # 6. Stream search — logistics already running in background
