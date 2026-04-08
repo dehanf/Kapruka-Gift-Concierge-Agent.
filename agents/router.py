@@ -84,22 +84,24 @@ class Router:
         # 2. allergies_dict and preferences_dict still needed for PREFERENCE_UPDATE
         allergies_dict = classification.get("allergies") or {}
         preferences_dict = classification.get("preferences") or {}
-
-        # 3. Load old profile
-        recipient = classification.get("search_recipient")
-        if isinstance(recipient, list) and len(recipient) > 1:
-            # Multiple recipients — merge all profiles
-            old_profile = {
+        location = classification.get("location") or "" 
+        old_profile = {
                 "allergies": {},
                 "preferences": {},
                 "location": {}
             }
 
-            new_profile = {
+        new_profile = {
                 "allergies": {},
                 "preferences": {},
                 "location": {}
                 }
+
+        # 3. Load old profile
+        recipient = classification.get("search_recipient")
+        if isinstance(recipient, list) and len(recipient) > 1:
+            # Multiple recipients — merge all profiles
+
 
             for name in recipient:
                 # old profile
@@ -111,7 +113,7 @@ class Router:
                 # new profile
                 new_profile['allergies'][name] = allergies_dict.get(name,[])
                 new_profile['preferences'][name] = preferences_dict.get(name,[])
-                new_profile['location'][name] = ""
+                new_profile['location'][name] = location
             
 
             recipient = ", ".join(recipient)  # "daughter, wife, son" 
@@ -120,7 +122,13 @@ class Router:
             # Single recipient
             if isinstance(recipient, list):
                 recipient = recipient[0] if recipient else None
-            old_profile = get_profile(self.customer_id, recipient) if recipient else {}
+            p = get_profile(self.customer_id, recipient) or {}
+            old_profile['allergies'][recipient] = p.get("allergies",[])
+            old_profile['preferences'][recipient] = p.get("preferences",[])
+            old_profile['location'][recipient] = p.get("location", "")
+            new_profile['allergies'][recipient] = allergies_dict.get(recipient,[])
+            new_profile['preferences'][recipient] = preferences_dict.get(recipient,[])
+            new_profile['location'][recipient] = location 
 
         
         print("old profile is" ,old_profile)
@@ -138,8 +146,8 @@ class Router:
                 t = threading.Thread(target=add_or_update_profile, kwargs={
                     "customer_id": self.customer_id,
                     "name": name,
-                    "allergies": allergies_dict.get(name, []),
-                    "preferences": preferences_dict.get(name, []),
+                    "allergies": allergies_dict.get(name, {}),
+                    "preferences": preferences_dict.get(name, {}),
                     "location": classification.get("location") or ""
                 })
                 t.daemon = True
