@@ -30,7 +30,7 @@ def _get_client() -> OpenAI:
     return _client
 
 
-def chat(system: str, messages: list[dict], max_tokens: int, model: str) -> str:
+def chat(system: str, messages: list[dict], max_tokens: int, model: str, json_mode: bool = False) -> str:
     """
     Send a chat request to OpenRouter and return the response text.
 
@@ -47,11 +47,15 @@ def chat(system: str, messages: list[dict], max_tokens: int, model: str) -> str:
 
     full_messages = [{"role": "system", "content": system}] + messages
 
-    response = client.chat.completions.create(
-        model=model,
-        max_tokens=max_tokens,
-        messages=full_messages,
-    )
+    kwargs = {
+        "model": model,
+        "max_tokens": max_tokens,
+        "messages": full_messages,
+    }
+    if json_mode: #Ensure json mode in API level
+        kwargs["response_format"] = {"type": "json_object"}
+
+    response = client.chat.completions.create(**kwargs)
 
     return response.choices[0].message.content.strip()
 
