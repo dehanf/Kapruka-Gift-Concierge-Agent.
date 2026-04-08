@@ -31,8 +31,8 @@ def critique(
     location = profile.get("location", "unknown")
 
     context = f"""Recipients: { recipients or 'unknown'}
-    Allergies: {', '.join(allergies) if allergies else 'none'}
-    Preferences: {', '.join(preferences) if preferences else 'none'}
+    Allergies: {str(allergies)}
+    Preferences: {str(preferences)}
     Location: {location}
     
 

@@ -47,13 +47,16 @@ def run_stream(recipients: set, search_query: str, old_profile: dict, new_profil
     if not products:
         yield "Sorry! I couldn't find anything matching right now. Could you try describing the gift differently?"
         return
-
+    
+    #print(f'products : {products} type of products : {type(products)}')
 
     product_lines = [
         f"- {p.get('name', 'Unknown')} | Price: {p.get('price', 'N/A')} "
-        f"| Category: {p.get('category', 'N/A')} | Stock: {p.get('availability', 'Unknown')}"
+        f"| Category: {p.get('category', 'N/A')} | Stock: {p.get('availability', 'Unknown')} "
+        f"| Specs: {p.get('specs', 'N/A')}"
         for p in products
     ]
+
 
     allergies = {}
     preferences = {}
