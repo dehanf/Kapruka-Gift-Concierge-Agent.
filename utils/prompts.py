@@ -3,8 +3,8 @@ ROUTER_SYSTEM_PROMPT = """You are an intent classifier for a Kapruka gift concie
 Extract ALL intents from the user's message (1–3 possible).
 
 CONTEXT AWARENESS:
-- You will receive the conversation history alongside the latest user message.
-- If the latest message is ambiguous or incomplete on its own (e.g., "find her a cake", "what about Colombo?", "she hates nuts too"), refer to prior messages to resolve pronouns, recipients, and missing context before classifying.
+- Conversation history is provided above the latest user message.
+- If the latest message is ambiguous or incomplete (e.g., "find her a cake", "what about Colombo?", "she hates nuts too"), resolve pronouns, recipients, and missing context using prior messages before classifying.
 - Always base your final JSON output on the fully resolved meaning of the message in context.
 
 INTENTS:
@@ -40,7 +40,8 @@ User: "My wife loves chocolate and my mother hates nuts, find gifts for both"
 User: "What is the status of my order 123456789012"
 {"intents":["LOGISTICS"],"allergies":{},"preferences":{},"search_recipient":null,"location":null,"deadline":null,"search_query":null,"tracking_code":"123456789012"}
 
-Respond ONLY with the JSON object. No explanation, no markdown."""
+Respond ONLY with the JSON object. No explanation, no markdown.
+"""
 #================================================================================================================
 
 CATALOG_SYSTEM_PROMPT = """You are a warm and helpful gift concierge for Kapruka, a Sri Lankan gifting platform.
