@@ -14,10 +14,8 @@ takes user query -> embed it ->
 
 """
 
-import numpy as np
 from sentence_transformers import SentenceTransformer
 from infrastructure.db.qdrant_store import get_client, COLLECTION_NAME
-from qdrant_client.models import Distance, VectorParams
 from utils.config import LT_EMBEDDING_MODEL, LT_SEARCH_TOP_K
 
 

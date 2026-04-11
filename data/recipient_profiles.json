@@ -1,67 +1,79 @@
 {
   "001": {
-    "user": {
-      "allergies": [
+    "allergies": {
+      "user": [
         "nuts"
       ],
-      "preferences": [],
-      "location": ""
-    },
-    "wife": {
-      "allergies": [
+      "wife": [
         "chocolate"
       ],
-      "preferences": [],
-      "location": ""
+      "son": [],
+      "daughter": [
+        "almonds",
+        "cashews"
+      ]
     },
-    "son": {
-      "allergies": [],
-      "preferences": [
+    "preferences": {
+      "user": [],
+      "wife": [],
+      "son": [
         "tech",
         "laptop accessories"
       ],
-      "location": ""
+      "daughter": []
     },
-    "daughter": {
-      "allergies": [
-        "almonds",
-        "cashews"
-      ],
-      "preferences": [],
-      "location": ""
+    "location": {
+      "user": "",
+      "wife": "",
+      "son": "",
+      "daughter": ""
     }
   },
   "002": {
-    "daughter": {
-      "allergies": [
+    "allergies": {
+      "daughter": [
         "pistachios"
       ],
-      "preferences": [],
-      "location": ""
-    },
-    "wife": {
-      "allergies": [
+      "wife": [
         "cashews",
         "almonds"
-      ],
-      "preferences": [],
-      "location": ""
+      ]
+    },
+    "preferences": {
+      "daughter": [],
+      "wife": []
+    },
+    "location": {
+      "daughter": "",
+      "wife": ""
     }
   },
   "003": {
-    "daughter": {
-      "allergies": [
+    "allergies": {
+      "daughter": [
         "almonds"
       ],
-      "preferences": [],
-      "location": ""
-    },
-    "wife": {
-      "allergies": [
+      "wife": [
         "cashews"
-      ],
-      "preferences": [],
-      "location": ""
+      ]
+    },
+    "preferences": {
+      "daughter": [],
+      "wife": []
+    },
+    "location": {
+      "daughter": "",
+      "wife": ""
     }
+  },
+  "004": {
+    "allergies": {
+      "daughter": [
+        "strawberries",
+        "chocolate"
+      ]
+    },
+    "preferences": {},
+    "location": {}
   }
 }

@@ -2,7 +2,7 @@
 
 from memory.lt_memory import search_catalog
 from agents import critic_agent
-from utils.config import CLAUDE_MODEL, CLAUDE_MAX_TOKENS_RESPOND, CLAUDE_MAX_TOKENS_CRITIQUE, MAX_REFLECTION_ROUNDS, CATALOG_SEARCH_TOP_K, CATALOG_MAX_PRODUCTS
+from utils.config import CLAUDE_MODEL, CLAUDE_MAX_TOKENS_RESPOND, MAX_REFLECTION_ROUNDS, CATALOG_SEARCH_TOP_K
 from utils.prompts import CATALOG_SYSTEM_PROMPT, REVISE_SYSTEM_PROMPT
 from infrastructure.llm.client import chat, chat_stream
 
@@ -83,7 +83,7 @@ def run_stream(recipients: set, search_query: str, old_profile: dict, new_profil
         yield chunk
 
     draft = "".join(draft_chunks)
-    print(f"\n[Catalog] Draft streamed.")
+    print("\n[Catalog] Draft streamed.")
 
     # 2. Check if critic needed
     skip_critic = not profile_summary.get("allergies") and not profile_summary.get("preferences")

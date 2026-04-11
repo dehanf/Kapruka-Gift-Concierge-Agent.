@@ -78,7 +78,7 @@ async def _do_crawl(categories: list[str]):
 
 
 def _do_ingest(catalog_path: str, recreate: bool):
-    from services.ingest_to_qdrant import run_ingest, load_catalog
+    from services.ingest_to_qdrant import run_ingest
     _header("Ingesting catalog → Qdrant")
     if catalog_path:
         # patch the path temporarily

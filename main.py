@@ -19,7 +19,7 @@ def main():
 
     router = Router(customer_id=customer_id)
 
-    print(f"\nWelcome! I'm your Kapruka gift concierge.")
+    print("\nWelcome! I'm your Kapruka gift concierge.")
     print("I can help you find gifts, save recipient preferences, and check delivery.")
     print("Type 'quit' or 'exit' to end the session.\n")
     print("-" * 50)
